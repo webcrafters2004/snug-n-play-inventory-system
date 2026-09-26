@@ -1,4 +1,67 @@
-import { Product, User, Transaction, BackupItem, AuditLogItem, SystemSettings, ShopifySyncAlert } from './types'
+import { Product, User, Transaction, BackupItem, AuditLogItem, SystemSettings, UserRole, UserPermissions } from './types'
+
+export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, UserPermissions> = {
+  system_admin: {
+    canAddEditProducts: true,
+    canDeleteProducts: true,
+    canAdjustStock: true,
+    canImportExcel: true,
+    canExportExcel: true,
+    canViewBackups: true,
+    canManageSettings: true,
+    canManageUsers: true,
+  },
+  inventory_editor: {
+    canAddEditProducts: true,
+    canDeleteProducts: true,
+    canAdjustStock: true,
+    canImportExcel: true,
+    canExportExcel: true,
+    canViewBackups: false,
+    canManageSettings: false,
+    canManageUsers: false,
+  },
+  operations: {
+    canAddEditProducts: false,
+    canDeleteProducts: false,
+    canAdjustStock: true,
+    canImportExcel: false,
+    canExportExcel: true,
+    canViewBackups: false,
+    canManageSettings: false,
+    canManageUsers: false,
+  },
+  accounts: {
+    canAddEditProducts: false,
+    canDeleteProducts: false,
+    canAdjustStock: false,
+    canImportExcel: false,
+    canExportExcel: true,
+    canViewBackups: false,
+    canManageSettings: false,
+    canManageUsers: false,
+  },
+  manager: {
+    canAddEditProducts: false,
+    canDeleteProducts: false,
+    canAdjustStock: false,
+    canImportExcel: false,
+    canExportExcel: true,
+    canViewBackups: true,
+    canManageSettings: false,
+    canManageUsers: false,
+  },
+  viewer: {
+    canAddEditProducts: false,
+    canDeleteProducts: false,
+    canAdjustStock: false,
+    canImportExcel: false,
+    canExportExcel: true,
+    canViewBackups: false,
+    canManageSettings: false,
+    canManageUsers: false,
+  },
+}
 
 export const INITIAL_USERS: User[] = [
   {
@@ -8,6 +71,7 @@ export const INITIAL_USERS: User[] = [
     email: 'amankamran2004@outlook.com',
     password: 'adminpassword',
     role: 'system_admin',
+    permissions: { ...ROLE_DEFAULT_PERMISSIONS.system_admin },
     status: 'active',
     lastLogin: '2026-09-26 09:30 AM',
     createdAt: '2026-01-01',
@@ -19,6 +83,7 @@ export const INITIAL_USERS: User[] = [
     email: 'editor@snugnplay.com',
     password: 'password123',
     role: 'inventory_editor',
+    permissions: { ...ROLE_DEFAULT_PERMISSIONS.inventory_editor },
     status: 'active',
     lastLogin: '2026-09-26 09:15 AM',
     createdAt: '2026-01-05',
@@ -30,6 +95,7 @@ export const INITIAL_USERS: User[] = [
     email: 'operations@snugnplay.com',
     password: 'password123',
     role: 'operations',
+    permissions: { ...ROLE_DEFAULT_PERMISSIONS.operations },
     status: 'active',
     lastLogin: '2026-09-26 08:45 AM',
     createdAt: '2026-02-01',
@@ -41,6 +107,7 @@ export const INITIAL_USERS: User[] = [
     email: 'accounts@snugnplay.com',
     password: 'password123',
     role: 'accounts',
+    permissions: { ...ROLE_DEFAULT_PERMISSIONS.accounts },
     status: 'active',
     lastLogin: '2026-09-24 11:20 AM',
     createdAt: '2026-02-15',
@@ -52,6 +119,7 @@ export const INITIAL_USERS: User[] = [
     email: 'manager@snugnplay.com',
     password: 'password123',
     role: 'manager',
+    permissions: { ...ROLE_DEFAULT_PERMISSIONS.manager },
     status: 'active',
     lastLogin: '2026-09-25 04:15 PM',
     createdAt: '2026-01-10',
@@ -63,6 +131,7 @@ export const INITIAL_USERS: User[] = [
     email: 'viewer@snugnplay.com',
     password: 'password123',
     role: 'viewer',
+    permissions: { ...ROLE_DEFAULT_PERMISSIONS.viewer },
     status: 'active',
     lastLogin: '2026-09-26 07:00 AM',
     createdAt: '2026-03-01',
@@ -85,13 +154,11 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     notes: 'Bestseller foam shapes with wipe-clean vegan leather cover.',
     updatedAt: '2026-09-25',
-    shopifySynced: true,
-    shopifyStock: 42,
   },
   {
     id: 'prod-102',
     sku: 'SNP-BP-002',
-    name: 'Luxury Velvet Ball Pit with 200 Non-Toxic Pearl Balls',
+    name: 'Luxury Velvet Ball Pit with 200 Pearl Balls',
     category: 'Ball Pits & Playsets',
     brand: 'Snug N Play Luxury',
     supplier: 'SafePlast Toys',
@@ -103,8 +170,6 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     notes: 'Memory foam base with washable velvet cover.',
     updatedAt: '2026-09-24',
-    shopifySynced: true,
-    shopifyStock: 18,
   },
   {
     id: 'prod-103',
@@ -121,8 +186,6 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     notes: 'XPE High-density foam, non-slip reversible design.',
     updatedAt: '2026-09-26',
-    shopifySynced: true,
-    shopifyStock: 8,
   },
   {
     id: 'prod-104',
@@ -139,8 +202,6 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     notes: 'Holds up to 100kg weight capacity with felt bottom.',
     updatedAt: '2026-09-22',
-    shopifySynced: true,
-    shopifyStock: 25,
   },
   {
     id: 'prod-105',
@@ -157,8 +218,6 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     notes: 'High demand calming plush. Urgent stock needed.',
     updatedAt: '2026-09-26',
-    shopifySynced: true,
-    shopifyStock: 0,
   },
   {
     id: 'prod-106',
@@ -175,19 +234,6 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     notes: 'Silent rubber tyres for indoor driving.',
     updatedAt: '2026-09-20',
-    shopifySynced: true,
-    shopifyStock: 14,
-  },
-]
-
-export const INITIAL_SHOPIFY_ALERTS: ShopifySyncAlert[] = [
-  {
-    id: 'shp-alert-1',
-    sku: 'SNP-GLIDER-99',
-    title: 'Snug Wooden Indoor Toddler Slide & Glider',
-    shopifyQuantity: 15,
-    reason: 'missing_in_local',
-    detectedAt: '2026-09-26 10:30 AM',
   },
 ]
 
@@ -250,12 +296,12 @@ export const INITIAL_AUDIT_LOGS: AuditLogItem[] = [
   {
     id: 'aud-2',
     timestamp: '2026-09-26 09:15:00',
-    action: 'STOCK_SYNC',
-    module: 'Shopify',
-    description: 'Shopify live inventory synchronized (6 SKUs matched)',
-    userName: 'System Admin',
-    userEmail: 'amankamran2004@outlook.com',
-    role: 'system_admin',
+    action: 'STOCK_MOVEMENT',
+    module: 'Stock',
+    description: 'Stock updated for SNP-SP-001 (+20 Units)',
+    userName: 'Inventory Editor',
+    userEmail: 'editor@snugnplay.com',
+    role: 'inventory_editor',
   },
 ]
 
@@ -267,7 +313,5 @@ export const INITIAL_SETTINGS: SystemSettings = {
   lastBackupDate: '2026-09-01',
   nextBackupDate: '2026-10-01',
   lowStockThresholdDefault: 10,
-  shopifyConnected: true,
-  shopifyStoreUrl: 'snugnplay.myshopify.com',
   theme: 'system',
 }

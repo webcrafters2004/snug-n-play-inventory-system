@@ -4,13 +4,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import {
   User,
   UserRole,
+  UserPermissions,
   Product,
   Transaction,
   BackupItem,
   AuditLogItem,
   SystemSettings,
   TransactionType,
-  ShopifySyncAlert,
 } from '@/lib/types'
 import {
   INITIAL_USERS,
@@ -19,7 +19,7 @@ import {
   INITIAL_BACKUPS,
   INITIAL_AUDIT_LOGS,
   INITIAL_SETTINGS,
-  INITIAL_SHOPIFY_ALERTS,
+  ROLE_DEFAULT_PERMISSIONS,
 } from '@/lib/initial-data'
 import { toast } from 'sonner'
 
@@ -29,10 +29,17 @@ interface InventoryContextType {
   products: Product[]
   transactions: Transaction[]
   backups: BackupItem[]
-  shopifyAlerts: ShopifySyncAlert[]
   auditLogs: AuditLogItem[]
   settings: SystemSettings
-  canEditInventory: boolean
+  // Granular Permissions for Current User
+  canAddEditProducts: boolean
+  canDeleteProducts: boolean
+  canAdjustStock: boolean
+  canImportExcel: boolean
+  canExportExcel: boolean
+  canViewBackups: boolean
+  canManageSettings: boolean
+  canManageUsers: boolean
   isAdmin: boolean
   // Auth & Password
   login: (identifier: string, password?: string) => boolean
@@ -45,16 +52,14 @@ interface InventoryContextType {
   deleteProduct: (id: string) => void
   adjustStock: (productId: string, type: TransactionType, quantity: number, reason: string, reference?: string) => void
   bulkImportProducts: (importedList: Partial<Product>[]) => { added: number; updated: number }
-  // Shopify Sync
-  syncWithShopify: () => void
-  dismissShopifyAlert: (alertId: string) => void
   // Backups
   createBackup: (type?: 'manual' | 'automated', name?: string) => BackupItem
   restoreBackup: (jsonContent: string) => boolean
   deleteBackup: (id: string) => void
-  // Users
+  // Users & Granular Access Control
   createUser: (data: Omit<User, 'id' | 'createdAt' | 'status'>) => void
   updateUser: (id: string, updates: Partial<User>) => void
+  updateUserPermissions: (id: string, permissions: Partial<UserPermissions>) => void
   toggleUserStatus: (id: string) => void
   deleteUser: (id: string) => void
   // Settings & Profile
@@ -66,14 +71,13 @@ interface InventoryContextType {
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
 
 const STORAGE_KEYS = {
-  USERS: 'snp_users_v3',
-  PRODUCTS: 'snp_products_v3',
-  TRANSACTIONS: 'snp_tx_v3',
-  BACKUPS: 'snp_backups_v3',
-  SHOPIFY: 'snp_shopify_v3',
-  AUDIT: 'snp_audit_v3',
-  SETTINGS: 'snp_settings_v3',
-  ACTIVE_USER: 'snp_active_user_v3',
+  USERS: 'snp_users_v4',
+  PRODUCTS: 'snp_products_v4',
+  TRANSACTIONS: 'snp_tx_v4',
+  BACKUPS: 'snp_backups_v4',
+  AUDIT: 'snp_audit_v4',
+  SETTINGS: 'snp_settings_v4',
+  ACTIVE_USER: 'snp_active_user_v4',
 }
 
 export function InventoryProvider({ children }: { children: React.ReactNode }) {
@@ -83,7 +87,6 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS)
   const [backups, setBackups] = useState<BackupItem[]>(INITIAL_BACKUPS)
-  const [shopifyAlerts, setShopifyAlerts] = useState<ShopifySyncAlert[]>(INITIAL_SHOPIFY_ALERTS)
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS)
   const [settings, setSettings] = useState<SystemSettings>(INITIAL_SETTINGS)
 
@@ -94,26 +97,36 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       const storedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS)
       const storedTx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS)
       const storedBackups = localStorage.getItem(STORAGE_KEYS.BACKUPS)
-      const storedShopify = localStorage.getItem(STORAGE_KEYS.SHOPIFY)
       const storedAudit = localStorage.getItem(STORAGE_KEYS.AUDIT)
       const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS)
       const storedActiveUser = localStorage.getItem(STORAGE_KEYS.ACTIVE_USER)
 
-      if (storedUsers) setUsers(JSON.parse(storedUsers))
+      if (storedUsers) {
+        const parsed = JSON.parse(storedUsers)
+        // Ensure every user has permissions structure
+        const normalized = parsed.map((u: User) => ({
+          ...u,
+          permissions: u.permissions || ROLE_DEFAULT_PERMISSIONS[u.role] || ROLE_DEFAULT_PERMISSIONS.viewer,
+        }))
+        setUsers(normalized)
+      }
       if (storedProducts) setProducts(JSON.parse(storedProducts))
       if (storedTx) setTransactions(JSON.parse(storedTx))
       if (storedBackups) setBackups(JSON.parse(storedBackups))
-      if (storedShopify) setShopifyAlerts(JSON.parse(storedShopify))
       if (storedAudit) setAuditLogs(JSON.parse(storedAudit))
       if (storedSettings) setSettings(JSON.parse(storedSettings))
 
       if (storedActiveUser) {
-        setCurrentUser(JSON.parse(storedActiveUser))
+        const u = JSON.parse(storedActiveUser)
+        setCurrentUser({
+          ...u,
+          permissions: u.permissions || ROLE_DEFAULT_PERMISSIONS[u.role] || ROLE_DEFAULT_PERMISSIONS.viewer,
+        })
       } else {
         setCurrentUser(INITIAL_USERS[0])
       }
     } catch (e) {
-      console.error('Storage load failed:', e)
+      console.error('Storage load error:', e)
     } finally {
       setIsLoaded(true)
     }
@@ -127,7 +140,6 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products))
       localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions))
       localStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(backups))
-      localStorage.setItem(STORAGE_KEYS.SHOPIFY, JSON.stringify(shopifyAlerts))
       localStorage.setItem(STORAGE_KEYS.AUDIT, JSON.stringify(auditLogs))
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings))
       if (currentUser) {
@@ -136,9 +148,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem(STORAGE_KEYS.ACTIVE_USER)
       }
     } catch (e) {
-      console.error('Storage sync failed:', e)
+      console.error('Storage sync error:', e)
     }
-  }, [users, products, transactions, backups, shopifyAlerts, auditLogs, settings, currentUser, isLoaded])
+  }, [users, products, transactions, backups, auditLogs, settings, currentUser, isLoaded])
 
   const addAuditLog = (action: string, module: AuditLogItem['module'], description: string) => {
     const newLog: AuditLogItem = {
@@ -154,9 +166,18 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs((prev) => [newLog, ...prev.slice(0, 99)])
   }
 
-  // RBAC flags: Only System Admin & Inventory Editor can mutate catalog
-  const canEditInventory = currentUser?.role === 'system_admin' || currentUser?.role === 'inventory_editor'
+  // Dynamic Granular RBAC Permissions
   const isAdmin = currentUser?.role === 'system_admin'
+  const userPerms = currentUser?.permissions || (currentUser ? ROLE_DEFAULT_PERMISSIONS[currentUser.role] : ROLE_DEFAULT_PERMISSIONS.viewer)
+
+  const canAddEditProducts = isAdmin || !!userPerms?.canAddEditProducts
+  const canDeleteProducts = isAdmin || !!userPerms?.canDeleteProducts
+  const canAdjustStock = isAdmin || !!userPerms?.canAdjustStock
+  const canImportExcel = isAdmin || !!userPerms?.canImportExcel
+  const canExportExcel = isAdmin || (userPerms?.canExportExcel !== false)
+  const canViewBackups = isAdmin || !!userPerms?.canViewBackups
+  const canManageSettings = isAdmin || !!userPerms?.canManageSettings
+  const canManageUsers = isAdmin || !!userPerms?.canManageUsers
 
   // Auth: Email OR Username login
   const login = (identifier: string, pass = ''): boolean => {
@@ -175,8 +196,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       const updated = { ...target, lastLogin: new Date().toLocaleString() }
       setCurrentUser(updated)
       setUsers((prev) => prev.map((u) => (u.id === target.id ? updated : u)))
-      addAuditLog('USER_LOGIN', 'Auth', `${target.name} (${target.role}) logged in`)
-      toast.success(`Welcome, ${target.name}!`)
+      addAuditLog('USER_LOGIN', 'Auth', `${target.name} logged in`)
+      toast.success(`Welcome back, ${target.name}`)
       return true
     } else {
       toast.error('Invalid Email/Username or Password.')
@@ -189,21 +210,21 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       addAuditLog('USER_LOGOUT', 'Auth', `${currentUser.name} signed out`)
     }
     setCurrentUser(null)
-    toast.info('Signed out.')
+    toast.info('Signed out successfully.')
   }
 
   const switchRole = (role: UserRole) => {
     const existing = users.find((u) => u.role === role && u.status === 'active')
     if (existing) {
       setCurrentUser(existing)
-      toast.success(`Switched role: ${existing.name} (${role.replace('_', ' ')})`)
+      toast.success(`Active profile: ${existing.name}`)
     }
   }
 
   // Admin changes password for any user
   const changeUserPassword = (userId: string, newPass: string) => {
     if (!isAdmin) {
-      toast.error('Only System Admin can reset/change user passwords.')
+      toast.error('Only System Admin can reset user passwords.')
       return
     }
     setUsers((prev) =>
@@ -214,7 +235,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     }
     const target = users.find((u) => u.id === userId)
     addAuditLog('PASSWORD_CHANGED', 'Users', `System Admin updated password for ${target?.name || userId}`)
-    toast.success(`Password updated for ${target?.name || 'user'}!`)
+    toast.success(`Password updated for ${target?.name || 'user'}`)
   }
 
   // Product status helper
@@ -226,8 +247,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   }
 
   const addProduct = (data: Omit<Product, 'id' | 'updatedAt' | 'status'>) => {
-    if (!canEditInventory) {
-      toast.error('Permission denied. Only Inventory Editor / Admin can add products.')
+    if (!canAddEditProducts) {
+      toast.error('Permission denied: You do not have access to add products.')
       return
     }
     const status = calculateStatus(data.quantity, data.minStock, data.maxStock)
@@ -236,18 +257,16 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       id: `prod-${Date.now()}`,
       status,
       updatedAt: new Date().toISOString().split('T')[0],
-      shopifySynced: true,
-      shopifyStock: data.quantity,
     }
 
     setProducts((prev) => [newProduct, ...prev])
-    addAuditLog('PRODUCT_CREATE', 'Inventory', `Added product: ${newProduct.name} (${newProduct.sku})`)
+    addAuditLog('PRODUCT_CREATE', 'Inventory', `Created product: ${newProduct.name} (${newProduct.sku})`)
     toast.success(`Product ${newProduct.name} created.`)
   }
 
   const updateProduct = (id: string, updates: Partial<Product>) => {
-    if (!canEditInventory) {
-      toast.error('Permission denied. View-only access.')
+    if (!canAddEditProducts) {
+      toast.error('Permission denied: You do not have access to edit products.')
       return
     }
     setProducts((prev) =>
@@ -270,14 +289,14 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   }
 
   const deleteProduct = (id: string) => {
-    if (!canEditInventory) {
-      toast.error('Permission denied. Only Inventory Editor / Admin can delete products.')
+    if (!canDeleteProducts) {
+      toast.error('Permission denied: You do not have access to delete products.')
       return
     }
     const prod = products.find((p) => p.id === id)
     setProducts((prev) => prev.filter((p) => p.id !== id))
-    addAuditLog('PRODUCT_DELETE', 'Inventory', `Deleted: ${prod?.sku}`)
-    toast.success('Product deleted.')
+    addAuditLog('PRODUCT_DELETE', 'Inventory', `Deleted SKU: ${prod?.sku}`)
+    toast.success('Product removed from inventory.')
   }
 
   const adjustStock = (
@@ -287,8 +306,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     reason: string,
     reference?: string
   ) => {
-    if (!canEditInventory) {
-      toast.error('Permission denied. Only Inventory Editor / Admin can adjust stock.')
+    if (!canAdjustStock) {
+      toast.error('Permission denied: You do not have access to adjust stock.')
       return
     }
     const product = products.find((p) => p.id === productId)
@@ -315,18 +334,18 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       reason,
       reference: reference || `REF-${Math.floor(1000 + Math.random() * 9000)}`,
       date: new Date().toLocaleString(),
-      userName: currentUser?.name || 'Inventory Editor',
+      userName: currentUser?.name || 'Inventory Operator',
     }
 
     setTransactions((prev) => [tx, ...prev])
-    updateProduct(productId, { quantity: newQuantity, shopifyStock: newQuantity })
-    addAuditLog('STOCK_ADJUSTMENT', 'Stock', `${type.toUpperCase()}: ${product.sku} changed by ${quantity}`)
-    toast.success(`Stock updated for ${product.sku} (New: ${newQuantity} Units)`)
+    updateProduct(productId, { quantity: newQuantity })
+    addAuditLog('STOCK_ADJUSTMENT', 'Stock', `${type.toUpperCase()}: ${product.sku} altered by ${quantity} units`)
+    toast.success(`Stock updated: ${product.sku} (${newQuantity} Units)`)
   }
 
   const bulkImportProducts = (importedList: Partial<Product>[]) => {
-    if (!canEditInventory) {
-      toast.error('Permission denied. Only Inventory Editor / Admin can import Excel.')
+    if (!canImportExcel) {
+      toast.error('Permission denied: You do not have access to import Excel files.')
       return { added: 0, updated: 0 }
     }
     let added = 0
@@ -366,8 +385,6 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
             isActive: true,
             notes: item.notes || '',
             updatedAt: new Date().toISOString().split('T')[0],
-            shopifySynced: true,
-            shopifyStock: qty,
           })
           added++
         }
@@ -375,42 +392,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       return copy
     })
 
-    addAuditLog('EXCEL_IMPORT', 'Inventory', `Imported Excel: ${added} added, ${updated} updated.`)
-    toast.success(`Excel import complete: ${added} added, ${updated} updated.`)
+    addAuditLog('EXCEL_IMPORT', 'Inventory', `Excel Import: ${added} added, ${updated} updated`)
+    toast.success(`Import complete: ${added} added, ${updated} updated.`)
     return { added, updated }
-  }
-
-  // Shopify Sync logic
-  const syncWithShopify = () => {
-    // Check if any Shopify alert SKU can be synced
-    if (shopifyAlerts.length > 0) {
-      shopifyAlerts.forEach((alert) => {
-        if (alert.reason === 'missing_in_local') {
-          addProduct({
-            sku: alert.sku,
-            name: alert.title,
-            category: 'Shopify Imported',
-            brand: 'Snug N Play',
-            supplier: 'Shopify Store',
-            warehouse: 'Main Hub - Karachi',
-            quantity: alert.shopifyQuantity,
-            minStock: 10,
-            maxStock: 100,
-            isActive: true,
-            notes: 'Auto-synced from Shopify Store Catalog',
-          })
-        }
-      })
-      setShopifyAlerts([])
-      toast.success('Shopify inventory synchronized! Missing items added to catalog.')
-    } else {
-      toast.success('Shopify inventory is already 100% in sync with local stock.')
-    }
-    addAuditLog('SHOPIFY_SYNC', 'Shopify', 'Manual Shopify sync executed.')
-  }
-
-  const dismissShopifyAlert = (alertId: string) => {
-    setShopifyAlerts((prev) => prev.filter((a) => a.id !== alertId))
   }
 
   // Backups
@@ -418,7 +402,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const dump = {
       timestamp: new Date().toISOString(),
       metadata: {
-        app: 'Snugnplay Inventory System',
+        app: 'Snug N Play Inventory System',
         author: currentUser?.name || 'System Admin',
         email: settings.adminEmail,
       },
@@ -448,7 +432,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
 
     setBackups((prev) => [newBackup, ...prev])
     setSettings((prev) => ({ ...prev, lastBackupDate: new Date().toISOString().split('T')[0] }))
-    toast.success(`Backup "${backupName}" downloaded!`)
+    toast.success(`Backup created: "${backupName}"`)
 
     if (typeof window !== 'undefined') {
       const blob = new Blob([jsonString], { type: 'application/json' })
@@ -467,7 +451,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
 
   const restoreBackup = (jsonContent: string): boolean => {
     if (!isAdmin) {
-      toast.error('Only System Admin can restore backups.')
+      toast.error('Only System Admin can restore database snapshots.')
       return false
     }
     try {
@@ -486,26 +470,70 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const deleteBackup = (id: string) => {
     if (!isAdmin) return
     setBackups((prev) => prev.filter((b) => b.id !== id))
-    toast.info('Backup record removed.')
+    toast.info('Backup snapshot deleted.')
   }
 
-  // Users management
+  // Users & Granular Access Control
   const createUser = (data: Omit<User, 'id' | 'createdAt' | 'status'>) => {
     if (!isAdmin) return
+    const defaultPerms = ROLE_DEFAULT_PERMISSIONS[data.role] || ROLE_DEFAULT_PERMISSIONS.viewer
     const newUser: User = {
       ...data,
+      permissions: data.permissions || defaultPerms,
       id: `usr-${Date.now()}`,
       status: 'active',
       createdAt: new Date().toISOString().split('T')[0],
     }
     setUsers((prev) => [...prev, newUser])
-    toast.success(`User ${newUser.name} created.`)
+    toast.success(`User account for ${newUser.name} created.`)
   }
 
   const updateUser = (id: string, updates: Partial<User>) => {
     if (!isAdmin) return
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updates } : u)))
-    toast.success('User updated.')
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== id) return u
+        const newRole = updates.role || u.role
+        const currentPerms = updates.permissions || u.permissions || ROLE_DEFAULT_PERMISSIONS[newRole]
+        return {
+          ...u,
+          ...updates,
+          permissions: currentPerms,
+        }
+      })
+    )
+    if (currentUser?.id === id) {
+      setCurrentUser((prev) => (prev ? { ...prev, ...updates } : null))
+    }
+    toast.success('User updated successfully.')
+  }
+
+  const updateUserPermissions = (id: string, newPerms: Partial<UserPermissions>) => {
+    if (!isAdmin) return
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== id) return u
+        const updatedPermissions: UserPermissions = {
+          ...u.permissions,
+          ...newPerms,
+        }
+        return {
+          ...u,
+          permissions: updatedPermissions,
+        }
+      })
+    )
+    if (currentUser?.id === id) {
+      setCurrentUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              permissions: { ...prev.permissions, ...newPerms },
+            }
+          : null
+      )
+    }
+    toast.success('Access permissions updated.')
   }
 
   const toggleUserStatus = (id: string) => {
@@ -518,13 +546,13 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const deleteUser = (id: string) => {
     if (!isAdmin || currentUser?.id === id) return
     setUsers((prev) => prev.filter((u) => u.id !== id))
-    toast.success('User removed.')
+    toast.success('User account deleted.')
   }
 
   const updateSettings = (updates: Partial<SystemSettings>) => {
-    if (!isAdmin) return
+    if (!canManageSettings) return
     setSettings((prev) => ({ ...prev, ...updates }))
-    toast.success('Settings updated.')
+    toast.success('Settings saved.')
   }
 
   const updateProfile = (name: string, email: string) => {
@@ -544,10 +572,16 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         products,
         transactions,
         backups,
-        shopifyAlerts,
         auditLogs,
         settings,
-        canEditInventory,
+        canAddEditProducts,
+        canDeleteProducts,
+        canAdjustStock,
+        canImportExcel,
+        canExportExcel,
+        canViewBackups,
+        canManageSettings,
+        canManageUsers,
         isAdmin,
         login,
         logout,
@@ -558,13 +592,12 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         deleteProduct,
         adjustStock,
         bulkImportProducts,
-        syncWithShopify,
-        dismissShopifyAlert,
         createBackup,
         restoreBackup,
         deleteBackup,
         createUser,
         updateUser,
+        updateUserPermissions,
         toggleUserStatus,
         deleteUser,
         updateSettings,

@@ -1,11 +1,19 @@
 import type { Metadata, Viewport } from 'next'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from 'sonner'
 import './globals.css'
 
+const fontSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-sans',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
-  title: 'Snug N Play Inventory System - Enterprise Dashboard',
-  description: 'Enterprise Web-Based Inventory Management System with Excel Import/Export, 30-Day Auto Backups, and Multi-Role RBAC.',
+  title: 'Snug N Play Inventory System',
+  description: 'Physical Inventory Management System for Snug N Play.',
   icons: {
     icon: '/icon.png',
     shortcut: '/favicon.ico',
@@ -27,8 +35,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="antialiased min-h-screen bg-background text-foreground">
+    <html lang="en" className={fontSans.variable} suppressHydrationWarning>
+      <body className="font-sans antialiased min-h-screen bg-background text-foreground selection:bg-indigo-500 selection:text-white">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
           <Toaster richColors position="top-right" />

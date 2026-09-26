@@ -6,6 +6,17 @@ export type UserRole =
   | 'manager'
   | 'viewer'
 
+export interface UserPermissions {
+  canAddEditProducts: boolean
+  canDeleteProducts: boolean
+  canAdjustStock: boolean
+  canImportExcel: boolean
+  canExportExcel: boolean
+  canViewBackups: boolean
+  canManageSettings: boolean
+  canManageUsers: boolean
+}
+
 export interface User {
   id: string
   name: string
@@ -13,6 +24,7 @@ export interface User {
   email: string
   password?: string
   role: UserRole
+  permissions: UserPermissions
   status: 'active' | 'disabled'
   avatar?: string
   lastLogin?: string
@@ -36,8 +48,6 @@ export interface Product {
   isActive: boolean
   notes?: string
   updatedAt: string
-  shopifySynced?: boolean
-  shopifyStock?: number
 }
 
 export type TransactionType = 'stock_in' | 'stock_out' | 'adjustment' | 'damage' | 'return' | 'import'
@@ -74,20 +84,11 @@ export interface AuditLogItem {
   id: string
   timestamp: string
   action: string
-  module: 'Auth' | 'Inventory' | 'Stock' | 'Users' | 'Backup' | 'Shopify' | 'Settings'
+  module: 'Auth' | 'Inventory' | 'Stock' | 'Users' | 'Backup' | 'Settings'
   description: string
   userName: string
   userEmail: string
   role: UserRole
-}
-
-export interface ShopifySyncAlert {
-  id: string
-  sku: string
-  title: string
-  shopifyQuantity: number
-  reason: 'missing_in_local' | 'quantity_mismatch'
-  detectedAt: string
 }
 
 export interface SystemSettings {
@@ -98,7 +99,5 @@ export interface SystemSettings {
   lastBackupDate: string
   nextBackupDate: string
   lowStockThresholdDefault: number
-  shopifyConnected: boolean
-  shopifyStoreUrl: string
   theme: 'light' | 'dark' | 'system'
 }

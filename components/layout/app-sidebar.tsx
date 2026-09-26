@@ -10,9 +10,7 @@ import {
   Users2,
   Settings,
   LogOut,
-  Lock,
   ChevronRight,
-  Sparkles,
 } from 'lucide-react'
 
 interface AppSidebarProps {
@@ -22,8 +20,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebarProps) {
-  const { currentUser, logout, products } = useInventory()
-  const isAdmin = currentUser?.role === 'system_admin'
+  const { currentUser, logout, products, isAdmin } = useInventory()
 
   const lowStockCount = products.filter((p) => p.status === 'low_stock' || p.status === 'out_of_stock').length
 
@@ -32,40 +29,33 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
       id: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
-      color: 'text-indigo-500',
     },
     {
       id: 'inventory',
-      label: 'Products & SKUs',
+      label: 'Products & Stock',
       icon: Package,
-      color: 'text-emerald-500',
-      badge: lowStockCount > 0 ? `${lowStockCount} Low` : undefined,
-      badgeColor: 'bg-amber-500 text-white',
+      badge: lowStockCount > 0 ? `${lowStockCount}` : undefined,
     },
     {
       id: 'stock',
-      label: 'Stock In / Out',
+      label: 'Stock Movements',
       icon: ArrowLeftRight,
-      color: 'text-purple-500',
     },
     {
       id: 'backup',
       label: 'Backups',
       icon: HardDriveDownload,
-      color: 'text-blue-500',
     },
     {
       id: 'users',
-      label: 'Users & Roles',
+      label: 'Users & Access',
       icon: Users2,
-      color: 'text-pink-500',
       adminOnly: true,
     },
     {
       id: 'profile',
       label: 'Settings',
       icon: Settings,
-      color: 'text-slate-400',
     },
   ]
 
@@ -74,25 +64,30 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
     if (onCloseMobile) onCloseMobile()
   }
 
+  const roleDisplay = (r?: string) => {
+    if (!r) return 'User'
+    return r.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+
   return (
-    <aside className="w-64 h-screen flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 select-none shadow-sm">
+    <aside className="w-64 h-screen flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 select-none shadow-xs">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center gap-3">
-        <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-xs flex items-center justify-center">
+      <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+        <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700 shadow-xs flex items-center justify-center">
           <img
             src="/logo.webp"
             alt="Snug N Play"
-            className="h-8 w-auto object-contain"
+            className="h-7 w-auto object-contain"
             onError={(e) => {
               e.currentTarget.style.display = 'none'
             }}
           />
         </div>
         <div>
-          <span className="font-extrabold text-sm text-slate-900 dark:text-white block tracking-tight">
+          <span className="font-bold text-sm text-slate-900 dark:text-white block tracking-tight">
             Snug N Play
           </span>
-          <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 block">
+          <span className="text-[11px] font-medium text-slate-400 block">
             Inventory System
           </span>
         </div>
@@ -100,8 +95,8 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
 
       {/* Navigation List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
-        <div className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          Menu
+        <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Navigation
         </div>
 
         {navItems.map((item) => {
@@ -109,35 +104,35 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
           const isActive = activeTab === item.id
           const isRestricted = item.adminOnly && !isAdmin
 
+          if (isRestricted) return null
+
           return (
             <button
               key={item.id}
-              onClick={() => !isRestricted && handleNavClick(item.id)}
-              disabled={isRestricted}
+              onClick={() => handleNavClick(item.id)}
               className={`
-                w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all text-left
+                w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-left duration-150
                 ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : isRestricted
-                    ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-40'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                 }
               `}
             >
-              <div className="flex items-center gap-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : item.color}`} />
+              <div className="flex items-center gap-2.5">
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
                 <span>{item.label}</span>
               </div>
 
               <div className="flex items-center gap-1.5">
-                {item.badge && (!item.adminOnly || isAdmin) && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${item.badgeColor}`}>
+                {item.badge && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    isActive ? 'bg-indigo-700 text-white' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                  }`}>
                     {item.badge}
                   </span>
                 )}
-                {isRestricted && <Lock className="w-3 h-3 text-slate-400" />}
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-white/80" />}
+                {isActive && <ChevronRight className="w-3.5 h-3.5 text-white/70" />}
               </div>
             </button>
           )
@@ -145,18 +140,18 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
       </div>
 
       {/* User Footer */}
-      <div className="p-3 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
-        <div className="flex items-center justify-between p-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 shadow-xs mb-2">
+      <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 shadow-xs mb-2">
           <div className="flex items-center gap-2.5 truncate">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white font-black flex items-center justify-center text-xs flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">
               {currentUser?.name?.charAt(0) || 'A'}
             </div>
             <div className="truncate text-left">
-              <span className="text-xs font-bold text-slate-900 dark:text-white block truncate">
+              <span className="text-xs font-semibold text-slate-900 dark:text-white block truncate">
                 {currentUser?.name}
               </span>
-              <span className="text-[10px] text-slate-500 font-semibold block capitalize">
-                {currentUser?.role?.replace('_', ' ')}
+              <span className="text-[10px] text-slate-400 font-medium block">
+                {roleDisplay(currentUser?.role)}
               </span>
             </div>
           </div>
@@ -164,7 +159,7 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
 
         <button
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />
           Sign Out

@@ -11,11 +11,8 @@ import {
   Download,
   Upload,
   Plus,
-  Sparkles,
   ArrowRight,
-  Globe,
-  CheckCircle2,
-  Warehouse,
+  AlertCircle,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -34,11 +31,10 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
   const {
     products,
     adjustStock,
-    canEditInventory,
-    shopifyAlerts,
-    syncWithShopify,
-    dismissShopifyAlert,
-    settings,
+    canAddEditProducts,
+    canImportExcel,
+    canExportExcel,
+    canAdjustStock,
   } = useInventory()
 
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -60,188 +56,150 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Shopify Live Mismatch Alert Banner */}
-      {shopifyAlerts.length > 0 && (
-        <div className="p-4 rounded-3xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-amber-500 text-white rounded-2xl flex-shrink-0 mt-0.5">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-wide">
-                ⚠️ Shopify Sync Alert — Item Missing in Local Inventory
-              </h4>
-              <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
-                SKU <strong>{shopifyAlerts[0].sku}</strong> ({shopifyAlerts[0].title}) has{' '}
-                <strong>{shopifyAlerts[0].shopifyQuantity} units</strong> on Shopify store, but has not been added to your local catalog.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {canEditInventory && (
-              <Button
-                size="sm"
-                onClick={syncWithShopify}
-                className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-extrabold h-9 px-3.5 rounded-xl shadow-xs"
-              >
-                Sync & Add to Catalog
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => dismissShopifyAlert(shopifyAlerts[0].id)}
-              className="text-xs h-9 rounded-xl border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900"
-            >
-              Dismiss
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Hero Action Bar */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Clean Top Action Banner */}
+      <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-800 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-xs font-bold">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-            Snug N Play Physical Inventory System
-          </div>
-          <h1 className="text-2xl font-black tracking-tight">Warehouse & Stock Overview</h1>
-          <p className="text-xs text-indigo-100 max-w-md">
-            Real-time physical quantity tracking, automated Shopify SKU alignment, and Excel operations.
+          <span className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider block">
+            Snug N Play Warehouse
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight">Stock & Inventory Overview</h1>
+          <p className="text-xs text-indigo-100 max-w-lg">
+            Track physical warehouse quantities, log incoming shipments, and manage stock thresholds.
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {canEditInventory && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {canAddEditProducts && (
             <Button
               size="sm"
               onClick={() => setIsAddOpen(true)}
-              className="bg-white text-indigo-700 hover:bg-slate-100 font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
+              className="bg-white text-indigo-700 hover:bg-slate-50 font-semibold text-xs h-9 px-3.5 rounded-xl shadow-xs"
             >
-              <Plus className="w-4 h-4 mr-1" />
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
               Add Product
             </Button>
           )}
 
-          {canEditInventory && (
+          {canImportExcel && (
             <Button
               size="sm"
               onClick={() => setIsImportOpen(true)}
-              className="bg-indigo-950/60 hover:bg-indigo-950 border border-white/20 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
+              className="bg-indigo-900/60 hover:bg-indigo-900 border border-white/20 text-white font-medium text-xs h-9 px-3.5 rounded-xl shadow-xs"
             >
-              <Upload className="w-4 h-4 mr-1 text-emerald-400" />
+              <Upload className="w-3.5 h-3.5 mr-1.5" />
               Import Excel
             </Button>
           )}
 
-          <Button
-            size="sm"
-            onClick={() => exportProductsToExcel(products)}
-            className="bg-indigo-950/60 hover:bg-indigo-950 border border-white/20 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
-          >
-            <Download className="w-4 h-4 mr-1 text-amber-400" />
-            Export Excel
-          </Button>
+          {canExportExcel && (
+            <Button
+              size="sm"
+              onClick={() => exportProductsToExcel(products)}
+              className="bg-indigo-900/60 hover:bg-indigo-900 border border-white/20 text-white font-medium text-xs h-9 px-3.5 rounded-xl shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              Export
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* 4 Clean Physical Quantity KPI Cards (Zero Price / Zero Valuation) */}
+      {/* 4 Focused KPI Cards (Zero Pricing, Zero Shopify link card) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total SKUs */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total SKUs</span>
-            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalSkus} Products</div>
-            <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold mt-1 inline-block">
-              In Master Catalog
-            </span>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total SKUs</span>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalSkus} Products</div>
+            <span className="text-[11px] text-slate-500 mt-0.5 block">Catalog Master</span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-            <Package className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <Package className="w-5 h-5" />
           </div>
         </div>
 
         {/* Total Units */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Physical Stock</span>
-            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalUnits.toLocaleString()} Units</div>
-            <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold mt-1 inline-block">
-              3 Active Warehouses
-            </span>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Units on Hand</span>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalUnits.toLocaleString()} Units</div>
+            <span className="text-[11px] text-slate-500 mt-0.5 block">Active Inventory</span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-            <Boxes className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <Boxes className="w-5 h-5" />
           </div>
         </div>
 
-        {/* Low Stock Alerts */}
+        {/* Low Stock Items */}
         <div
           onClick={() => onNavigate('inventory')}
-          className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 shadow-sm flex items-center justify-between cursor-pointer hover:bg-amber-500/15 transition-all"
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 shadow-xs flex items-center justify-between cursor-pointer hover:border-amber-400 transition-all"
         >
           <div>
-            <span className="text-xs font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
-              Low / Depleted Stock
+            <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+              Low Stock Alert
             </span>
-            <div className="text-2xl font-black text-amber-800 dark:text-amber-300 mt-1">
-              {lowStockItems.length + outOfStockItems.length} SKUs
+            <div className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">
+              {lowStockItems.length} SKUs
             </div>
-            <span className="text-[11px] text-amber-700 font-bold mt-1 inline-flex items-center gap-1">
-              View items <ArrowRight className="w-3 h-3" />
+            <span className="text-[11px] text-amber-600 dark:text-amber-400/80 mt-0.5 inline-flex items-center gap-1 font-medium">
+              Needs restock <ArrowRight className="w-3 h-3" />
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
-            <AlertTriangle className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5" />
           </div>
         </div>
 
-        {/* Shopify Integration Status */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+        {/* Out of Stock */}
+        <div
+          onClick={() => onNavigate('inventory')}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50 shadow-xs flex items-center justify-between cursor-pointer hover:border-rose-400 transition-all"
+        >
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Shopify Store Link</span>
-            <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5">
-              <CheckCircle2 className="w-5 h-5" /> Connected
+            <span className="text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider block">
+              Out of Stock
+            </span>
+            <div className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">
+              {outOfStockItems.length} SKUs
             </div>
-            <span className="text-[11px] text-slate-400 font-mono mt-1 inline-block truncate max-w-[140px]">
-              {settings.shopifyStoreUrl}
+            <span className="text-[11px] text-rose-600 dark:text-rose-400/80 mt-0.5 block font-medium">
+              Zero quantity available
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-            <Globe className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <AlertCircle className="w-5 h-5" />
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Urgent Restock List & Chart */}
+      {/* Main Grid: Urgent Restock & Movement Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Urgent Low Stock Panel */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
-                Urgent Items to Restock
+                Urgent Replenishment List
               </h2>
-              <p className="text-[11px] text-slate-400">Products under safety minimum quantity limit</p>
+              <p className="text-[11px] text-slate-400">Items below recommended minimum threshold</p>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onNavigate('inventory')}
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400"
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
-              All Products
+              View All
             </Button>
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
             {[...outOfStockItems, ...lowStockItems].length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400">
-                ✅ All inventory products are well stocked!
+                All inventory products have sufficient stock levels.
               </div>
             ) : (
               [...outOfStockItems, ...lowStockItems].map((prod) => (
@@ -252,24 +210,24 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
                         {prod.sku}
                       </span>
                       <span
-                        className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           prod.status === 'out_of_stock'
-                            ? 'bg-rose-500 text-white'
-                            : 'bg-amber-500 text-white'
+                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                         }`}
                       >
-                        {prod.status === 'out_of_stock' ? '0 STOCK' : 'LOW STOCK'}
+                        {prod.status === 'out_of_stock' ? 'Out of Stock' : 'Low Stock'}
                       </span>
                     </div>
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{prod.name}</p>
-                    <p className="text-[10px] text-slate-400">{prod.warehouse} • Qty: <strong>{prod.quantity}</strong> (Min: {prod.minStock})</p>
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">{prod.name}</p>
+                    <p className="text-[11px] text-slate-400">Stock: <strong>{prod.quantity}</strong> units</p>
                   </div>
 
-                  {canEditInventory && (
+                  {canAdjustStock && (
                     <Button
                       size="sm"
-                      onClick={() => adjustStock(prod.id, 'stock_in', 20, 'Urgent Restock from Dashboard')}
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold h-8 px-3 rounded-xl shadow-xs"
+                      onClick={() => adjustStock(prod.id, 'stock_in', 20, 'Restock from Dashboard')}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium h-8 px-3 rounded-xl shadow-xs"
                     >
                       + Restock (20)
                     </Button>
@@ -281,14 +239,14 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
         </div>
 
         {/* Stock Flow Chart */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-indigo-500" />
-                Physical Quantity Movement Flow
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                Monthly Quantity Movement
               </h2>
-              <p className="text-[11px] text-slate-400">Received Units (In) vs Dispatched Orders (Out)</p>
+              <p className="text-[11px] text-slate-400">Units Received (In) vs Units Dispatched (Out)</p>
             </div>
           </div>
 
@@ -297,12 +255,12 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
               <AreaChart data={stockFlowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#9333ea" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#9333ea" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
@@ -314,11 +272,11 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
                     borderColor: 'hsl(var(--border))',
                     borderRadius: '12px',
                     fontSize: '11px',
-                    fontWeight: 'bold',
+                    fontWeight: '600',
                   }}
                 />
-                <Area type="monotone" dataKey="stockIn" name="Received Units" stroke="#6366f1" strokeWidth={3} fill="url(#colorIn)" />
-                <Area type="monotone" dataKey="stockOut" name="Dispatched Units" stroke="#a855f7" strokeWidth={3} fill="url(#colorOut)" />
+                <Area type="monotone" dataKey="stockIn" name="Received Units" stroke="#4f46e5" strokeWidth={2.5} fill="url(#colorIn)" />
+                <Area type="monotone" dataKey="stockOut" name="Dispatched Units" stroke="#9333ea" strokeWidth={2.5} fill="url(#colorOut)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
