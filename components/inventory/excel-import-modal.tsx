@@ -13,18 +13,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   FileSpreadsheet,
   UploadCloud,
   CheckCircle2,
-  AlertCircle,
   AlertTriangle,
   Download,
   FileCheck,
   RefreshCw,
 } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface ExcelImportModalProps {
   isOpen: boolean
@@ -32,7 +29,7 @@ interface ExcelImportModalProps {
 }
 
 export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
-  const { bulkImportProducts } = useInventory()
+  const { bulkImportProducts, canEditInventory } = useInventory()
   const [file, setFile] = useState<File | null>(null)
   const [isParsing, setIsParsing] = useState(false)
   const [parsedData, setParsedData] = useState<Partial<Product>[]>([])
@@ -79,8 +76,8 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
   }
 
   const handleConfirmImport = () => {
-    if (parsedData.length === 0) return
-    const res = bulkImportProducts(parsedData)
+    if (parsedData.length === 0 || !canEditInventory) return
+    bulkImportProducts(parsedData)
     handleReset()
     onClose()
   }
@@ -95,7 +92,7 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && (handleReset(), onClose())}>
-      <DialogContent className="max-w-2xl bg-card text-card-foreground border-border max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl bg-card text-card-foreground border-border max-h-[90vh] flex flex-col rounded-3xl">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
@@ -107,14 +104,14 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
               variant="outline"
               size="sm"
               onClick={() => downloadSampleTemplate()}
-              className="text-xs h-7 gap-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+              className="text-xs h-7 gap-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-xl"
             >
               <Download className="w-3.5 h-3.5" />
-              Download Sample Template
+              Sample Excel Template
             </Button>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Upload an Excel sheet containing your product catalog. Columns: SKU, Product Name, Category, Brand, Supplier, Warehouse, Quantity, Min Stock, Unit Cost, Selling Price.
+            Upload an Excel sheet containing product SKUs and physical stock levels. Columns: SKU, Product Name, Category, Brand, Supplier, Warehouse, Quantity, Min Stock, Max Stock, Notes.
           </DialogDescription>
         </DialogHeader>
 
@@ -125,7 +122,7 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-border hover:border-indigo-500/60 rounded-xl p-8 text-center cursor-pointer transition-colors bg-muted/20 hover:bg-muted/40"
+              className="border-2 border-dashed border-border hover:border-indigo-500/60 rounded-2xl p-8 text-center cursor-pointer transition-colors bg-muted/20 hover:bg-muted/40"
             >
               <input
                 ref={fileInputRef}
@@ -135,12 +132,12 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
                 className="hidden"
               />
               <div className="flex flex-col items-center justify-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                   <UploadCloud className="w-6 h-6" />
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-foreground">Click to browse or drag & drop Excel file here</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Supports .xlsx, .xls, and .csv files</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Supports standard .xlsx, .xls, and .csv</p>
                 </div>
               </div>
             </div>
@@ -157,7 +154,7 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
           {/* Parsed Summary & Preview */}
           {file && !isParsing && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/40 border border-border">
                 <div className="flex items-center gap-2.5">
                   <FileCheck className="w-5 h-5 text-emerald-500" />
                   <div>
@@ -167,14 +164,14 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
                     </p>
                   </div>
                 </div>
-                <Button size="sm" variant="ghost" onClick={handleReset} className="text-xs h-7 text-destructive">
+                <Button size="sm" variant="ghost" onClick={handleReset} className="text-xs h-7 text-destructive rounded-xl">
                   Change File
                 </Button>
               </div>
 
               {/* Error Callout if any */}
               {errors.length > 0 && (
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs space-y-1">
+                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs space-y-1">
                   <div className="flex items-center gap-1.5 font-semibold">
                     <AlertTriangle className="w-3.5 h-3.5" />
                     Validation Notices ({errors.length}):
@@ -187,19 +184,19 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
                 </div>
               )}
 
-              {/* Data Preview Table */}
+              {/* Data Preview Table (Pure Quantities) */}
               {parsedData.length > 0 && (
                 <div className="space-y-1.5">
                   <span className="text-xs font-semibold text-foreground">Import Preview (First 5 Items):</span>
-                  <div className="border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                  <div className="border rounded-2xl overflow-hidden max-h-48 overflow-y-auto">
                     <table className="w-full text-left text-[11px]">
                       <thead className="bg-muted/80 sticky top-0 border-b">
                         <tr>
                           <th className="p-2 font-semibold">SKU</th>
                           <th className="p-2 font-semibold">Product Name</th>
                           <th className="p-2 font-semibold">Category</th>
+                          <th className="p-2 font-semibold">Warehouse</th>
                           <th className="p-2 font-semibold text-right">Quantity</th>
-                          <th className="p-2 font-semibold text-right">Unit Cost</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -208,8 +205,8 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
                             <td className="p-2 font-mono font-medium text-indigo-600 dark:text-indigo-400">{row.sku}</td>
                             <td className="p-2 font-medium truncate max-w-[180px]">{row.name}</td>
                             <td className="p-2 text-muted-foreground">{row.category}</td>
-                            <td className="p-2 text-right font-bold">{row.quantity}</td>
-                            <td className="p-2 text-right text-muted-foreground">Rs. {row.unitCost?.toLocaleString()}</td>
+                            <td className="p-2 text-muted-foreground">{row.warehouse || 'Main Hub'}</td>
+                            <td className="p-2 text-right font-bold text-foreground">{row.quantity} Units</td>
                           </tr>
                         ))}
                       </tbody>
@@ -222,15 +219,15 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
         </div>
 
         <DialogFooter className="pt-2 border-t border-border">
-          <Button type="button" variant="outline" size="sm" onClick={() => (handleReset(), onClose())} className="text-xs h-8">
+          <Button type="button" variant="outline" size="sm" onClick={() => (handleReset(), onClose())} className="text-xs h-9 rounded-xl">
             Cancel
           </Button>
           <Button
             type="button"
             size="sm"
-            disabled={parsedData.length === 0 || isParsing}
+            disabled={parsedData.length === 0 || isParsing || !canEditInventory}
             onClick={handleConfirmImport}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8 gap-1.5 shadow-sm shadow-emerald-600/20"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 font-bold gap-1.5 shadow-sm shadow-emerald-600/20 rounded-xl"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
             Import {parsedData.length} Products

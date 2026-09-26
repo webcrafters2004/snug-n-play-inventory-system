@@ -1,9 +1,17 @@
-export type UserRole = 'system_admin' | 'accounts' | 'operations' | 'manager'
+export type UserRole =
+  | 'system_admin'
+  | 'inventory_editor'
+  | 'operations'
+  | 'accounts'
+  | 'manager'
+  | 'viewer'
 
 export interface User {
   id: string
   name: string
+  username: string
   email: string
+  password?: string
   role: UserRole
   status: 'active' | 'disabled'
   avatar?: string
@@ -24,12 +32,12 @@ export interface Product {
   quantity: number
   minStock: number
   maxStock: number
-  unitCost: number
-  sellingPrice: number
   status: ProductStatus
   isActive: boolean
   notes?: string
   updatedAt: string
+  shopifySynced?: boolean
+  shopifyStock?: number
 }
 
 export type TransactionType = 'stock_in' | 'stock_out' | 'adjustment' | 'damage' | 'return' | 'import'
@@ -59,43 +67,38 @@ export interface BackupItem {
   createdBy: string
   createdAt: string
   checksum: string
-  downloadPayload?: string // JSON string dump
-}
-
-export interface PasswordResetRequest {
-  id: string
-  referenceCode: string
-  userId?: string
-  userEmail: string
-  userName: string
-  status: 'pending' | 'approved' | 'rejected'
-  requestedAt: string
-  handledAt?: string
-  handledBy?: string
-  temporaryPassword?: string
-  notes?: string
+  downloadPayload?: string
 }
 
 export interface AuditLogItem {
   id: string
   timestamp: string
   action: string
-  module: 'Auth' | 'Inventory' | 'Stock' | 'Users' | 'Backup' | 'Settings'
+  module: 'Auth' | 'Inventory' | 'Stock' | 'Users' | 'Backup' | 'Shopify' | 'Settings'
   description: string
   userName: string
   userEmail: string
   role: UserRole
 }
 
+export interface ShopifySyncAlert {
+  id: string
+  sku: string
+  title: string
+  shopifyQuantity: number
+  reason: 'missing_in_local' | 'quantity_mismatch'
+  detectedAt: string
+}
+
 export interface SystemSettings {
   companyName: string
   adminEmail: string
-  currency: string
-  currencySymbol: string
   autoBackupEnabled: boolean
   backupFrequencyDays: number
   lastBackupDate: string
   nextBackupDate: string
   lowStockThresholdDefault: number
+  shopifyConnected: boolean
+  shopifyStoreUrl: string
   theme: 'light' | 'dark' | 'system'
 }

@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Sparkles,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 
 interface AppSidebarProps {
   activeTab: string
@@ -23,10 +22,9 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebarProps) {
-  const { currentUser, logout, resetRequests, products } = useInventory()
+  const { currentUser, logout, products } = useInventory()
   const isAdmin = currentUser?.role === 'system_admin'
 
-  const pendingResets = resetRequests.filter((r) => r.status === 'pending').length
   const lowStockCount = products.filter((p) => p.status === 'low_stock' || p.status === 'out_of_stock').length
 
   const navItems = [
@@ -38,7 +36,7 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
     },
     {
       id: 'inventory',
-      label: 'Products & Excel',
+      label: 'Products & SKUs',
       icon: Package,
       color: 'text-emerald-500',
       badge: lowStockCount > 0 ? `${lowStockCount} Low` : undefined,
@@ -62,8 +60,6 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
       icon: Users2,
       color: 'text-pink-500',
       adminOnly: true,
-      badge: pendingResets > 0 ? `${pendingResets}` : undefined,
-      badgeColor: 'bg-indigo-600 text-white',
     },
     {
       id: 'profile',

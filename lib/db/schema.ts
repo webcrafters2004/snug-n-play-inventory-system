@@ -149,11 +149,8 @@ export const products = pgTable('products', {
   quantity: integer('quantity').notNull().default(0),
   minStock: integer('min_stock').notNull().default(0),
   maxStock: integer('max_stock').notNull().default(0),
-  unitCost: numeric('unit_cost', { precision: 12, scale: 2 }).notNull().default('0'),
-  sellingPrice: numeric('selling_price', { precision: 12, scale: 2 }).notNull().default('0'),
   isActive: boolean('is_active').notNull().default(true),
   notes: text('notes'),
-  totalValue: numeric('total_value', { precision: 14, scale: 2 }).generatedAlwaysAs(sql`quantity * unit_cost`),
   status: text('status').generatedAlwaysAs(
     sql`CASE WHEN NOT is_active THEN 'inactive' WHEN quantity <= 0 THEN 'out_of_stock' WHEN quantity <= min_stock THEN 'low_stock' WHEN max_stock > 0 AND quantity > max_stock THEN 'overstock' ELSE 'in_stock' END`,
   ),

@@ -2,21 +2,20 @@
 
 import React, { useState } from 'react'
 import { useInventory } from '@/context/inventory-context'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
   Package,
   Boxes,
-  DollarSign,
   AlertTriangle,
-  XCircle,
   TrendingUp,
   Download,
   Upload,
   Plus,
-  ArrowUpDown,
   Sparkles,
   ArrowRight,
+  Globe,
+  CheckCircle2,
+  Warehouse,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -27,19 +26,26 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { exportProductsToExcel, downloadSampleTemplate } from '@/lib/excel-helper'
+import { exportProductsToExcel } from '@/lib/excel-helper'
 import { ExcelImportModal } from '@/components/inventory/excel-import-modal'
 import { ProductModal } from '@/components/inventory/product-modal'
 
 export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
-  const { products, settings, adjustStock } = useInventory()
+  const {
+    products,
+    adjustStock,
+    canEditInventory,
+    shopifyAlerts,
+    syncWithShopify,
+    dismissShopifyAlert,
+    settings,
+  } = useInventory()
+
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
 
   const totalSkus = products.length
   const totalUnits = products.reduce((acc, p) => acc + p.quantity, 0)
-  const totalCostValuation = products.reduce((acc, p) => acc + p.quantity * p.unitCost, 0)
-  const totalRetailValuation = products.reduce((acc, p) => acc + p.quantity * p.sellingPrice, 0)
   const lowStockItems = products.filter((p) => p.status === 'low_stock')
   const outOfStockItems = products.filter((p) => p.status === 'out_of_stock')
 
@@ -52,42 +58,84 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
     { month: 'Sep', stockIn: 130, stockOut: 104 },
   ]
 
-  const formatCurrency = (val: number) => `${settings.currencySymbol} ${val.toLocaleString()}`
-
   return (
     <div className="space-y-6 pb-12">
-      {/* Big Action Bar */}
+      {/* Shopify Live Mismatch Alert Banner */}
+      {shopifyAlerts.length > 0 && (
+        <div className="p-4 rounded-3xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-500 text-white rounded-2xl flex-shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-wide">
+                ⚠️ Shopify Sync Alert — Item Missing in Local Inventory
+              </h4>
+              <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                SKU <strong>{shopifyAlerts[0].sku}</strong> ({shopifyAlerts[0].title}) has{' '}
+                <strong>{shopifyAlerts[0].shopifyQuantity} units</strong> on Shopify store, but has not been added to your local catalog.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {canEditInventory && (
+              <Button
+                size="sm"
+                onClick={syncWithShopify}
+                className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-extrabold h-9 px-3.5 rounded-xl shadow-xs"
+              >
+                Sync & Add to Catalog
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => dismissShopifyAlert(shopifyAlerts[0].id)}
+              className="text-xs h-9 rounded-xl border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Hero Action Bar */}
       <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-xs font-bold">
             <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-            Snug N Play Live Hub
+            Snug N Play Physical Inventory System
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Inventory Overview</h1>
+          <h1 className="text-2xl font-black tracking-tight">Warehouse & Stock Overview</h1>
           <p className="text-xs text-indigo-100 max-w-md">
-            Quickly import Excel catalogs, monitor live stock levels, and dispatch orders.
+            Real-time physical quantity tracking, automated Shopify SKU alignment, and Excel operations.
           </p>
         </div>
 
-        {/* Big Action Buttons */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button
-            size="sm"
-            onClick={() => setIsAddOpen(true)}
-            className="bg-white text-indigo-700 hover:bg-slate-100 font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Product
-          </Button>
+          {canEditInventory && (
+            <Button
+              size="sm"
+              onClick={() => setIsAddOpen(true)}
+              className="bg-white text-indigo-700 hover:bg-slate-100 font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Product
+            </Button>
+          )}
 
-          <Button
-            size="sm"
-            onClick={() => setIsImportOpen(true)}
-            className="bg-indigo-950/60 hover:bg-indigo-950 border border-white/20 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
-          >
-            <Upload className="w-4 h-4 mr-1 text-emerald-400" />
-            Import Excel
-          </Button>
+          {canEditInventory && (
+            <Button
+              size="sm"
+              onClick={() => setIsImportOpen(true)}
+              className="bg-indigo-950/60 hover:bg-indigo-950 border border-white/20 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
+            >
+              <Upload className="w-4 h-4 mr-1 text-emerald-400" />
+              Import Excel
+            </Button>
+          )}
 
           <Button
             size="sm"
@@ -100,13 +148,13 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
         </div>
       </div>
 
-      {/* 4 Big, Clean KPI Cards */}
+      {/* 4 Clean Physical Quantity KPI Cards (Zero Price / Zero Valuation) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total SKUs */}
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Products</span>
-            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalSkus} SKUs</div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total SKUs</span>
+            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalSkus} Products</div>
             <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold mt-1 inline-block">
               In Master Catalog
             </span>
@@ -119,30 +167,14 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
         {/* Total Units */}
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Units in Stock</span>
-            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalUnits.toLocaleString()}</div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Physical Stock</span>
+            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalUnits.toLocaleString()} Units</div>
             <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold mt-1 inline-block">
-              Across Warehouses
+              3 Active Warehouses
             </span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
             <Boxes className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Stock Valuation */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Stock Cost Value</span>
-            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-              {formatCurrency(totalCostValuation)}
-            </div>
-            <span className="text-[11px] text-slate-500 font-semibold mt-1 inline-block">
-              Retail Value: {formatCurrency(totalRetailValuation)}
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-            <DollarSign className="w-6 h-6" />
           </div>
         </div>
 
@@ -159,16 +191,32 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
               {lowStockItems.length + outOfStockItems.length} SKUs
             </div>
             <span className="text-[11px] text-amber-700 font-bold mt-1 inline-flex items-center gap-1">
-              Click to view items <ArrowRight className="w-3 h-3" />
+              View items <ArrowRight className="w-3 h-3" />
             </span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
             <AlertTriangle className="w-6 h-6" />
           </div>
         </div>
+
+        {/* Shopify Integration Status */}
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Shopify Store Link</span>
+            <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5">
+              <CheckCircle2 className="w-5 h-5" /> Connected
+            </div>
+            <span className="text-[11px] text-slate-400 font-mono mt-1 inline-block truncate max-w-[140px]">
+              {settings.shopifyStoreUrl}
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+            <Globe className="w-6 h-6" />
+          </div>
+        </div>
       </div>
 
-      {/* Main Grid: Urgent Stock Action List & Chart */}
+      {/* Main Grid: Urgent Restock List & Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Urgent Low Stock Panel */}
         <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
@@ -178,7 +226,7 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                 Urgent Items to Restock
               </h2>
-              <p className="text-[11px] text-slate-400">Products under safety minimum stock limit</p>
+              <p className="text-[11px] text-slate-400">Products under safety minimum quantity limit</p>
             </div>
             <Button
               variant="ghost"
@@ -214,16 +262,18 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
                       </span>
                     </div>
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{prod.name}</p>
-                    <p className="text-[10px] text-slate-400">{prod.warehouse} (Min: {prod.minStock})</p>
+                    <p className="text-[10px] text-slate-400">{prod.warehouse} • Qty: <strong>{prod.quantity}</strong> (Min: {prod.minStock})</p>
                   </div>
 
-                  <Button
-                    size="sm"
-                    onClick={() => adjustStock(prod.id, 'stock_in', 20, 'Urgent Restock from Dashboard')}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold h-8 px-3 rounded-xl shadow-xs"
-                  >
-                    + Restock (20)
-                  </Button>
+                  {canEditInventory && (
+                    <Button
+                      size="sm"
+                      onClick={() => adjustStock(prod.id, 'stock_in', 20, 'Urgent Restock from Dashboard')}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold h-8 px-3 rounded-xl shadow-xs"
+                    >
+                      + Restock (20)
+                    </Button>
+                  )}
                 </div>
               ))
             )}
@@ -236,9 +286,9 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
             <div>
               <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-indigo-500" />
-                Monthly Stock Flow
+                Physical Quantity Movement Flow
               </h2>
-              <p className="text-[11px] text-slate-400">Received Stock vs Dispatched Orders</p>
+              <p className="text-[11px] text-slate-400">Received Units (In) vs Dispatched Orders (Out)</p>
             </div>
           </div>
 
@@ -267,8 +317,8 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
                     fontWeight: 'bold',
                   }}
                 />
-                <Area type="monotone" dataKey="stockIn" name="Stock In" stroke="#6366f1" strokeWidth={3} fill="url(#colorIn)" />
-                <Area type="monotone" dataKey="stockOut" name="Stock Out" stroke="#a855f7" strokeWidth={3} fill="url(#colorOut)" />
+                <Area type="monotone" dataKey="stockIn" name="Received Units" stroke="#6366f1" strokeWidth={3} fill="url(#colorIn)" />
+                <Area type="monotone" dataKey="stockOut" name="Dispatched Units" stroke="#a855f7" strokeWidth={3} fill="url(#colorOut)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

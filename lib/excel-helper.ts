@@ -2,7 +2,6 @@ import * as XLSX from 'xlsx'
 import { Product } from './types'
 
 export function exportProductsToExcel(products: Product[], filename = 'SnugNPlay_Inventory_Export.xlsx') {
-  // Format data for export
   const rows = products.map((p) => ({
     SKU: p.sku,
     'Product Name': p.name,
@@ -13,17 +12,12 @@ export function exportProductsToExcel(products: Product[], filename = 'SnugNPlay
     Quantity: p.quantity,
     'Min Stock': p.minStock,
     'Max Stock': p.maxStock,
-    'Unit Cost (Rs.)': p.unitCost,
-    'Selling Price (Rs.)': p.sellingPrice,
-    'Total Value (Rs.)': p.quantity * p.unitCost,
     Status: p.status.toUpperCase().replace('_', ' '),
     Notes: p.notes || '',
     'Last Updated': p.updatedAt,
   }))
 
   const worksheet = XLSX.utils.json_to_sheet(rows)
-
-  // Auto-fit column widths
   const colWidths = Object.keys(rows[0] || {}).map((key) => ({
     wch: Math.max(key.length + 3, 14),
   }))
@@ -31,8 +25,6 @@ export function exportProductsToExcel(products: Product[], filename = 'SnugNPlay
 
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory')
-
-  // Generate file and trigger download
   XLSX.writeFile(workbook, filename)
 }
 
@@ -48,8 +40,6 @@ export function downloadSampleTemplate(filename = 'SnugNPlay_Sample_Inventory_Te
       Quantity: 30,
       'Min Stock': 10,
       'Max Stock': 100,
-      'Unit Cost': 8500,
-      'Selling Price': 13999,
       Notes: 'Sample product row for reference. Edit or add rows below.',
     },
     {
@@ -62,8 +52,6 @@ export function downloadSampleTemplate(filename = 'SnugNPlay_Sample_Inventory_Te
       Quantity: 50,
       'Min Stock': 15,
       'Max Stock': 150,
-      'Unit Cost': 1200,
-      'Selling Price': 2199,
       Notes: 'Non-toxic organic water-based paint.',
     },
   ]
@@ -103,8 +91,7 @@ export async function parseExcelFile(file: File): Promise<{
         const parsedProducts: Partial<Product>[] = []
 
         rawJson.forEach((row, idx) => {
-          const rowNum = idx + 2 // 1-based + 1 header
-          // Normalize column headers
+          const rowNum = idx + 2
           const sku = String(row.SKU || row.sku || row['Product SKU'] || '').trim()
           const name = String(row['Product Name'] || row.Name || row.name || row.title || '').trim()
           const category = String(row.Category || row.category || 'General').trim()
@@ -114,8 +101,6 @@ export async function parseExcelFile(file: File): Promise<{
           const quantity = parseInt(String(row.Quantity || row.quantity || row.Qty || row.qty || '0'), 10) || 0
           const minStock = parseInt(String(row['Min Stock'] || row.minStock || row.Min || '10'), 10) || 10
           const maxStock = parseInt(String(row['Max Stock'] || row.maxStock || row.Max || '100'), 10) || 100
-          const unitCost = parseFloat(String(row['Unit Cost'] || row.unitCost || row.Cost || '0')) || 0
-          const sellingPrice = parseFloat(String(row['Selling Price'] || row.sellingPrice || row.Price || '0')) || 0
           const notes = String(row.Notes || row.notes || '').trim()
 
           if (!sku) {
@@ -142,8 +127,6 @@ export async function parseExcelFile(file: File): Promise<{
             quantity,
             minStock,
             maxStock,
-            unitCost,
-            sellingPrice,
             status,
             isActive: true,
             notes,
@@ -160,7 +143,7 @@ export async function parseExcelFile(file: File): Promise<{
       } catch (err: any) {
         resolve({
           success: false,
-          errors: [`Excel parsing error: ${err.message || 'Corrupted or unreadable file'}`],
+          errors: [`Excel parsing error: ${err.message || 'Corrupted file'}`],
           totalRows: 0,
         })
       }

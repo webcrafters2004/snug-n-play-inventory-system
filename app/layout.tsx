@@ -7,7 +7,9 @@ export const metadata: Metadata = {
   title: 'Snug N Play Inventory System - Enterprise Dashboard',
   description: 'Enterprise Web-Based Inventory Management System with Excel Import/Export, 30-Day Auto Backups, and Multi-Role RBAC.',
   icons: {
-    icon: '/icon.svg',
+    icon: '/icon.png',
+    shortcut: '/favicon.ico',
+    apple: '/apple-icon.png',
   },
 }
 
