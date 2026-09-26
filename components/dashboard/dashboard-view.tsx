@@ -1,9 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useInventory } from '@/context/inventory-context'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Package,
@@ -16,6 +15,8 @@ import {
   Upload,
   Plus,
   ArrowUpDown,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -26,10 +27,14 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { exportProductsToExcel } from '@/lib/excel-helper'
+import { exportProductsToExcel, downloadSampleTemplate } from '@/lib/excel-helper'
+import { ExcelImportModal } from '@/components/inventory/excel-import-modal'
+import { ProductModal } from '@/components/inventory/product-modal'
 
 export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
-  const { products, settings } = useInventory()
+  const { products, settings, adjustStock } = useInventory()
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isAddOpen, setIsAddOpen] = useState(false)
 
   const totalSkus = products.length
   const totalUnits = products.reduce((acc, p) => acc + p.quantity, 0)
@@ -51,155 +56,193 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Welcome Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-card border border-border">
-        <div className="flex items-center gap-3">
-          <img
-            src="/logo.webp"
-            alt="Snug N Play"
-            className="h-10 w-auto object-contain hidden sm:inline-block"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-          <div>
-            <h1 className="text-xl font-black text-foreground">Snug N Play Overview</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Live warehouse stock summary, inventory valuation, and quick actions.
-            </p>
+      {/* Big Action Bar */}
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-xs font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+            Snug N Play Live Hub
           </div>
+          <h1 className="text-2xl font-black tracking-tight">Inventory Overview</h1>
+          <p className="text-xs text-indigo-100 max-w-md">
+            Quickly import Excel catalogs, monitor live stock levels, and dispatch orders.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Big Action Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Button
             size="sm"
-            onClick={() => onNavigate('inventory')}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 gap-1.5 font-bold"
+            onClick={() => setIsAddOpen(true)}
+            className="bg-white text-indigo-700 hover:bg-slate-100 font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
           >
-            <Package className="w-3.5 h-3.5" />
-            Open Inventory
+            <Plus className="w-4 h-4 mr-1" />
+            Add Product
           </Button>
 
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => exportProductsToExcel(products)}
-            className="text-xs h-8 gap-1.5 border-border hover:bg-muted font-medium"
+            onClick={() => setIsImportOpen(true)}
+            className="bg-indigo-950/60 hover:bg-indigo-950 border border-white/20 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-500" />
+            <Upload className="w-4 h-4 mr-1 text-emerald-400" />
+            Import Excel
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => exportProductsToExcel(products)}
+            className="bg-indigo-950/60 hover:bg-indigo-950 border border-white/20 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md"
+          >
+            <Download className="w-4 h-4 mr-1 text-amber-400" />
             Export Excel
           </Button>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      {/* 4 Big, Clean KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total SKUs */}
-        <Card className="border-border shadow-xs">
-          <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase">Total SKUs</span>
-            <Package className="w-4 h-4 text-indigo-500" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-black text-foreground">{totalSkus}</div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Active catalog items</p>
-          </CardContent>
-        </Card>
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Products</span>
+            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalSkus} SKUs</div>
+            <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold mt-1 inline-block">
+              In Master Catalog
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+            <Package className="w-6 h-6" />
+          </div>
+        </div>
 
-        {/* Total Stock Units */}
-        <Card className="border-border shadow-xs">
-          <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase">Stock Units</span>
-            <Boxes className="w-4 h-4 text-purple-500" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-black text-foreground">{totalUnits.toLocaleString()}</div>
-            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">In Warehouses</p>
-          </CardContent>
-        </Card>
+        {/* Total Units */}
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Units in Stock</span>
+            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalUnits.toLocaleString()}</div>
+            <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold mt-1 inline-block">
+              Across Warehouses
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+            <Boxes className="w-6 h-6" />
+          </div>
+        </div>
 
         {/* Stock Valuation */}
-        <Card className="border-border shadow-xs">
-          <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase">Stock Cost</span>
-            <DollarSign className="w-4 h-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Stock Cost Value</span>
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
               {formatCurrency(totalCostValuation)}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Total purchase cost</p>
-          </CardContent>
-        </Card>
-
-        {/* Retail Expected Value */}
-        <Card className="border-border shadow-xs">
-          <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase">Retail MSRP</span>
-            <TrendingUp className="w-4 h-4 text-blue-500" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-black text-blue-600 dark:text-blue-400">
-              {formatCurrency(totalRetailValuation)}
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Estimated revenue</p>
-          </CardContent>
-        </Card>
+            <span className="text-[11px] text-slate-500 font-semibold mt-1 inline-block">
+              Retail Value: {formatCurrency(totalRetailValuation)}
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+            <DollarSign className="w-6 h-6" />
+          </div>
+        </div>
 
         {/* Low Stock Alerts */}
-        <Card
+        <div
           onClick={() => onNavigate('inventory')}
-          className="border-amber-500/30 bg-amber-500/5 shadow-xs hover:border-amber-500/60 transition-colors cursor-pointer"
+          className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 shadow-sm flex items-center justify-between cursor-pointer hover:bg-amber-500/15 transition-all"
         >
-          <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase">Low Stock</span>
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-black text-amber-700 dark:text-amber-400">{lowStockItems.length}</div>
-            <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 mt-0.5 font-medium">Under safety limit</p>
-          </CardContent>
-        </Card>
-
-        {/* Out of Stock */}
-        <Card
-          onClick={() => onNavigate('inventory')}
-          className="border-red-500/30 bg-red-500/5 shadow-xs hover:border-red-500/60 transition-colors cursor-pointer"
-        >
-          <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
-            <span className="text-[11px] font-bold text-red-700 dark:text-red-400 uppercase">Out of Stock</span>
-            <XCircle className="w-4 h-4 text-red-500" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-black text-red-700 dark:text-red-400">{outOfStockItems.length}</div>
-            <p className="text-[10px] text-red-700/80 dark:text-red-400/80 mt-0.5 font-medium">0 Units remaining</p>
-          </CardContent>
-        </Card>
+          <div>
+            <span className="text-xs font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+              Low / Depleted Stock
+            </span>
+            <div className="text-2xl font-black text-amber-800 dark:text-amber-300 mt-1">
+              {lowStockItems.length + outOfStockItems.length} SKUs
+            </div>
+            <span className="text-[11px] text-amber-700 font-bold mt-1 inline-flex items-center gap-1">
+              Click to view items <ArrowRight className="w-3 h-3" />
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+        </div>
       </div>
 
-      {/* Stock Velocity Flow Chart */}
-      <Card className="border-border shadow-xs">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-indigo-500" />
-              Stock Movement Trend (Inflow vs. Dispatches)
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Comparison of stock received from suppliers vs orders dispatched.
-            </CardDescription>
+      {/* Main Grid: Urgent Stock Action List & Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Urgent Low Stock Panel */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                Urgent Items to Restock
+              </h2>
+              <p className="text-[11px] text-slate-400">Products under safety minimum stock limit</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate('inventory')}
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400"
+            >
+              All Products
+            </Button>
           </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-indigo-600" /> Received
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-purple-500" /> Dispatched
-            </span>
+
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {[...outOfStockItems, ...lowStockItems].length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                ✅ All inventory products are well stocked!
+              </div>
+            ) : (
+              [...outOfStockItems, ...lowStockItems].map((prod) => (
+                <div key={prod.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
+                        {prod.sku}
+                      </span>
+                      <span
+                        className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
+                          prod.status === 'out_of_stock'
+                            ? 'bg-rose-500 text-white'
+                            : 'bg-amber-500 text-white'
+                        }`}
+                      >
+                        {prod.status === 'out_of_stock' ? '0 STOCK' : 'LOW STOCK'}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{prod.name}</p>
+                    <p className="text-[10px] text-slate-400">{prod.warehouse} (Min: {prod.minStock})</p>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    onClick={() => adjustStock(prod.id, 'stock_in', 20, 'Urgent Restock from Dashboard')}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold h-8 px-3 rounded-xl shadow-xs"
+                  >
+                    + Restock (20)
+                  </Button>
+                </div>
+              ))
+            )}
           </div>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="h-60 w-full">
+        </div>
+
+        {/* Stock Flow Chart */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-indigo-500" />
+                Monthly Stock Flow
+              </h2>
+              <p className="text-[11px] text-slate-400">Received Stock vs Dispatched Orders</p>
+            </div>
+          </div>
+
+          <div className="h-64 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stockFlowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -219,17 +262,22 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',
                     borderColor: 'hsl(var(--border))',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     fontSize: '11px',
+                    fontWeight: 'bold',
                   }}
                 />
-                <Area type="monotone" dataKey="stockIn" name="Stock Received" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorIn)" />
-                <Area type="monotone" dataKey="stockOut" name="Stock Dispatched" stroke="#a855f7" strokeWidth={2} fillOpacity={1} fill="url(#colorOut)" />
+                <Area type="monotone" dataKey="stockIn" name="Stock In" stroke="#6366f1" strokeWidth={3} fill="url(#colorIn)" />
+                <Area type="monotone" dataKey="stockOut" name="Stock Out" stroke="#a855f7" strokeWidth={3} fill="url(#colorOut)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Modals */}
+      <ExcelImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <ProductModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
     </div>
   )
 }
