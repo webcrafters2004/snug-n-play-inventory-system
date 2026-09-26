@@ -19,16 +19,15 @@ interface AppNavigationProps {
 }
 
 export function AppNavigation({ activeTab, onTabChange }: AppNavigationProps) {
-  const { currentUser, resetRequests } = useInventory()
+  const { currentUser } = useInventory()
   const isAdmin = currentUser?.role === 'system_admin'
-  const pendingResets = resetRequests.filter((r) => r.status === 'pending').length
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'inventory', label: 'Inventory (Excel & SKUs)', icon: Package },
-    { id: 'stock', label: 'Stock In / Out', icon: ArrowLeftRight },
+    { id: 'inventory', label: 'Inventory & Products', icon: Package },
+    { id: 'stock', label: 'Stock Movement', icon: ArrowLeftRight },
     { id: 'backup', label: 'Backup System', icon: HardDriveDownload },
-    { id: 'users', label: 'Users & Roles', icon: Users2, adminOnly: true, badge: pendingResets > 0 ? `${pendingResets} New` : undefined },
+    { id: 'users', label: 'Users & Permissions', icon: Users2, adminOnly: true },
     { id: 'profile', label: 'Settings & Profile', icon: Settings },
   ]
 

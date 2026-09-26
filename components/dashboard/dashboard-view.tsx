@@ -105,71 +105,84 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
         </div>
       </div>
 
-      {/* 4 Focused KPI Cards (Zero Pricing, Zero Shopify link card) */}
+      {/* 4 Focused KPI Cards (Clear, prominent numbers, non-technical readable wording) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total SKUs */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        {/* Total Products */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between transition-all hover:shadow-sm">
           <div>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total SKUs</span>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalSkus} Products</div>
-            <span className="text-[11px] text-slate-500 mt-0.5 block">Catalog Master</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Total Products
+            </span>
+            <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 tracking-tight">
+              {totalSkus}
+            </div>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 block">
+              Registered in Catalog
+            </span>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-            <Package className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <Package className="w-6 h-6" />
           </div>
         </div>
 
         {/* Total Units */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between transition-all hover:shadow-sm">
           <div>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Units on Hand</span>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalUnits.toLocaleString()} Units</div>
-            <span className="text-[11px] text-slate-500 mt-0.5 block">Active Inventory</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Units on Hand
+            </span>
+            <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1 tracking-tight">
+              {totalUnits.toLocaleString()}
+            </div>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 block">
+              Physical Stock Count
+            </span>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-            <Boxes className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <Boxes className="w-6 h-6" />
           </div>
         </div>
 
-        {/* Low Stock Items */}
+        {/* Low Stock Warning */}
         <div
           onClick={() => onNavigate('inventory')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 shadow-xs flex items-center justify-between cursor-pointer hover:border-amber-400 transition-all"
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 shadow-xs flex items-center justify-between cursor-pointer hover:border-amber-400 transition-all hover:shadow-sm"
         >
           <div>
-            <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
-              Low Stock Alert
+            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+              Low Stock Warning
             </span>
-            <div className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">
-              {lowStockItems.length} SKUs
+            <div className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1 tracking-tight">
+              {lowStockItems.length}
             </div>
-            <span className="text-[11px] text-amber-600 dark:text-amber-400/80 mt-0.5 inline-flex items-center gap-1 font-medium">
-              Needs restock <ArrowRight className="w-3 h-3" />
+            <span className="text-xs font-medium text-amber-700 dark:text-amber-300 mt-1 inline-flex items-center gap-1">
+              {lowStockItems.length === 1 ? '1 Product needs restock' : `${lowStockItems.length} Products need restock`}{' '}
+              <ArrowRight className="w-3 h-3" />
             </span>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-            <AlertTriangle className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6" />
           </div>
         </div>
 
         {/* Out of Stock */}
         <div
           onClick={() => onNavigate('inventory')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50 shadow-xs flex items-center justify-between cursor-pointer hover:border-rose-400 transition-all"
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50 shadow-xs flex items-center justify-between cursor-pointer hover:border-rose-400 transition-all hover:shadow-sm"
         >
           <div>
-            <span className="text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider block">
+            <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider block">
               Out of Stock
             </span>
-            <div className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">
-              {outOfStockItems.length} SKUs
+            <div className="text-3xl font-extrabold text-rose-600 dark:text-rose-400 mt-1 tracking-tight">
+              {outOfStockItems.length}
             </div>
-            <span className="text-[11px] text-rose-600 dark:text-rose-400/80 mt-0.5 block font-medium">
-              Zero quantity available
+            <span className="text-xs font-medium text-rose-700 dark:text-rose-300 mt-1 block">
+              {outOfStockItems.length === 1 ? '1 Product has 0 stock' : `${outOfStockItems.length} Products have 0 stock`}
             </span>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-            <AlertCircle className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
           </div>
         </div>
       </div>

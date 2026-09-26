@@ -31,7 +31,6 @@ export function InventoryTableView() {
   } = useInventory()
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
 
   // Modals
@@ -39,18 +38,14 @@ export function InventoryTableView() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
-  const categories = ['ALL', ...Array.from(new Set(products.map((p) => p.category)))]
-
   const filteredProducts = products.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.brand.toLowerCase().includes(searchTerm.toLowerCase())
+      p.sku.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesCategory = selectedCategory === 'ALL' || p.category === selectedCategory
     const matchesStatus = selectedStatus === 'ALL' || p.status === selectedStatus
 
-    return matchesSearch && matchesCategory && matchesStatus
+    return matchesSearch && matchesStatus
   })
 
   const totalUnits = filteredProducts.reduce((sum, p) => sum + p.quantity, 0)
@@ -101,7 +96,7 @@ export function InventoryTableView() {
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Master list of all catalog items and stock quantities on hand.
+            Master list of physical products and stock quantities on hand.
           </p>
         </div>
 
@@ -159,31 +154,17 @@ export function InventoryTableView() {
 
       {/* Search & Filter Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-        <div className="sm:col-span-6 relative">
+        <div className="sm:col-span-8 relative">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by SKU, Product Name, Brand..."
+            placeholder="Search by SKU or Product Name..."
             className="pl-10 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
           />
         </div>
 
-        <div className="sm:col-span-3">
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full h-10 text-xs px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-medium text-slate-700 dark:text-slate-300"
-          >
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                Category: {c}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="sm:col-span-3">
+        <div className="sm:col-span-4">
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
@@ -193,30 +174,27 @@ export function InventoryTableView() {
             <option value="in_stock">In Stock</option>
             <option value="low_stock">Low Stock</option>
             <option value="out_of_stock">Out of Stock</option>
+            <option value="overstock">Overstock</option>
           </select>
         </div>
       </div>
 
-      {/* Clean, Refined Table (Removed Warehouse Location, Safety Limits, and Adjust Stock columns) */}
+      {/* Strictly 4 Columns Table: SKU | Product Name | Status | Action */}
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
               <tr>
-                <th className="py-3.5 px-4">SKU</th>
-                <th className="py-3.5 px-4">Product Name & Category</th>
-                <th className="py-3.5 px-4">Brand / Supplier</th>
-                <th className="py-3.5 px-4 text-center">Quantity on Hand</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
-                {(canAddEditProducts || canDeleteProducts) && (
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                )}
+                <th className="py-3.5 px-5 w-48">SKU</th>
+                <th className="py-3.5 px-5">Product Name</th>
+                <th className="py-3.5 px-5 text-center w-36">Status</th>
+                <th className="py-3.5 px-5 text-right w-28">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-slate-400 text-xs">
+                  <td colSpan={4} className="p-12 text-center text-slate-400 text-xs">
                     No products found matching your search filters.
                   </td>
                 </tr>
@@ -226,74 +204,59 @@ export function InventoryTableView() {
                     key={p.id}
                     className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    {/* SKU */}
-                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap text-xs">
+                    {/* 1. SKU */}
+                    <td className="py-3.5 px-5 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap text-xs">
                       {p.sku}
                     </td>
 
-                    {/* Product Name & Category */}
-                    <td className="py-3.5 px-4 max-w-sm">
-                      <span className="font-semibold text-slate-900 dark:text-white block truncate" title={p.name}>
+                    {/* 2. Product Name */}
+                    <td className="py-3.5 px-5">
+                      <span className="font-semibold text-slate-900 dark:text-white block text-xs" title={p.name}>
                         {p.name}
                       </span>
-                      <span className="text-[11px] text-slate-400 block mt-0.5">
-                        {p.category}
+                      <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
+                        {p.quantity.toLocaleString()} Units on hand
                       </span>
                     </td>
 
-                    {/* Brand & Supplier */}
-                    <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      <span className="font-medium text-slate-800 dark:text-slate-200 block">{p.brand}</span>
-                      <span className="text-[11px] text-slate-400">{p.supplier}</span>
-                    </td>
-
-                    {/* Quantity on Hand */}
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="font-bold text-sm text-slate-900 dark:text-white block">
-                        {p.quantity.toLocaleString()}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        Units
-                      </span>
-                    </td>
-
-                    {/* Status Badge */}
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                    {/* 3. Status */}
+                    <td className="py-3.5 px-5 text-center whitespace-nowrap">
                       {statusBadge(p.status)}
                     </td>
 
-                    {/* Actions (Only when user has edit/delete permissions) */}
-                    {(canAddEditProducts || canDeleteProducts) && (
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          {canAddEditProducts && (
-                            <button
-                              onClick={() => {
-                                setEditingProduct(p)
-                                setIsProductModalOpen(true)
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
-                              title="Edit Product"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
-                          {canDeleteProducts && (
-                            <button
-                              onClick={() => {
-                                if (confirm(`Are you sure you want to remove SKU ${p.sku}?`)) {
-                                  deleteProduct(p.id)
-                                }
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
-                              title="Delete Product"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
+                    {/* 4. Action */}
+                    <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {canAddEditProducts && (
+                          <button
+                            onClick={() => {
+                              setEditingProduct(p)
+                              setIsProductModalOpen(true)
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
+                            title="Edit Product"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {canDeleteProducts && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to remove SKU ${p.sku}?`)) {
+                                deleteProduct(p.id)
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                            title="Delete Product"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!canAddEditProducts && !canDeleteProducts && (
+                          <span className="text-[11px] text-slate-400 font-medium">View Only</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -307,7 +270,7 @@ export function InventoryTableView() {
             Showing <strong>{filteredProducts.length}</strong> Products
           </span>
           <span>
-            Total Stock Quantity:{' '}
+            Total Physical Units:{' '}
             <strong className="text-slate-900 dark:text-white font-bold text-xs">
               {totalUnits.toLocaleString()} Units
             </strong>
@@ -328,3 +291,4 @@ export function InventoryTableView() {
     </div>
   )
 }
+

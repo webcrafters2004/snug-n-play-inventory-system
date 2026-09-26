@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import {
   ArrowLeftRight,
   PackagePlus,
-  PackageMinus,
   AlertOctagon,
   RotateCcw,
   Search,
@@ -23,7 +22,6 @@ export function StockOperationsView() {
   const [opType, setOpType] = useState<TransactionType>('stock_in')
   const [qty, setQty] = useState(10)
   const [reason, setReason] = useState('Supplier shipment received')
-  const [refDoc, setRefDoc] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
 
   const selectedProduct = products.find((p) => p.id === selectedProductId)
@@ -31,9 +29,8 @@ export function StockOperationsView() {
   const handleExecuteOperation = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedProductId || qty <= 0 || !canAdjustStock) return
-    adjustStock(selectedProductId, opType, qty, reason, refDoc || undefined)
+    adjustStock(selectedProductId, opType, qty, reason)
     setQty(10)
-    setRefDoc('')
   }
 
   const filteredTx = transactions.filter((tx) => {
@@ -61,7 +58,7 @@ export function StockOperationsView() {
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Record physical stock received from suppliers or dispatched for customer deliveries.
+            Log incoming supplier inventory shipments, damaged items, and customer returns.
           </p>
         </div>
       </div>
@@ -79,8 +76,8 @@ export function StockOperationsView() {
           </div>
 
           <form onSubmit={handleExecuteOperation} className="space-y-4">
-            {/* 4 Professional Single-Icon Action Selectors (No emoji duplicates) */}
-            <div className="grid grid-cols-2 gap-2.5">
+            {/* 3 Movement Operation Selectors (Dispatch Stock Out removed) */}
+            <div className="grid grid-cols-3 gap-2.5">
               <button
                 type="button"
                 disabled={!canAdjustStock}
@@ -88,31 +85,14 @@ export function StockOperationsView() {
                   setOpType('stock_in')
                   setReason('Supplier shipment received')
                 }}
-                className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 ${
+                className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all duration-150 ${
                   opType === 'stock_in'
                     ? 'border-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shadow-xs'
                     : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 } ${!canAdjustStock ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <PackagePlus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Receive Stock In</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={!canAdjustStock}
-                onClick={() => {
-                  setOpType('stock_out')
-                  setReason('Dispatched customer order')
-                }}
-                className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 ${
-                  opType === 'stock_out'
-                    ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 shadow-xs'
-                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                } ${!canAdjustStock ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <PackageMinus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <span>Dispatch Stock Out</span>
+                <PackagePlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-center">Receive In (+)</span>
               </button>
 
               <button
@@ -122,14 +102,14 @@ export function StockOperationsView() {
                   setOpType('damage')
                   setReason('Damaged in storage')
                 }}
-                className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 ${
+                className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all duration-150 ${
                   opType === 'damage'
                     ? 'border-rose-600 bg-rose-50/80 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 shadow-xs'
                     : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 } ${!canAdjustStock ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <AlertOctagon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                <span>Damaged / Write-Off</span>
+                <AlertOctagon className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                <span className="text-center">Damaged (-)</span>
               </button>
 
               <button
@@ -139,14 +119,14 @@ export function StockOperationsView() {
                   setOpType('return')
                   setReason('Customer return received')
                 }}
-                className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 ${
+                className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all duration-150 ${
                   opType === 'return'
                     ? 'border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 shadow-xs'
                     : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 } ${!canAdjustStock ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <RotateCcw className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>Customer Return</span>
+                <RotateCcw className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <span className="text-center">Return (+)</span>
               </button>
             </div>
 
@@ -169,30 +149,18 @@ export function StockOperationsView() {
               </select>
             </div>
 
-            {/* Quantity & Reference */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Quantity (Units)</label>
-                <Input
-                  disabled={!canAdjustStock}
-                  type="number"
-                  min="1"
-                  required
-                  value={qty}
-                  onChange={(e) => setQty(parseInt(e.target.value) || 1)}
-                  className="h-10 text-xs font-bold rounded-xl"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Reference / PO #</label>
-                <Input
-                  disabled={!canAdjustStock}
-                  value={refDoc}
-                  onChange={(e) => setRefDoc(e.target.value)}
-                  placeholder="e.g. PO-8921"
-                  className="h-10 text-xs font-mono rounded-xl"
-                />
-              </div>
+            {/* Quantity */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Quantity (Units)</label>
+              <Input
+                disabled={!canAdjustStock}
+                type="number"
+                min="1"
+                required
+                value={qty}
+                onChange={(e) => setQty(parseInt(e.target.value) || 1)}
+                className="h-10 text-xs font-bold rounded-xl"
+              />
             </div>
 
             {/* Reason */}
@@ -203,6 +171,7 @@ export function StockOperationsView() {
                 required
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. Received from shipment"
                 className="h-10 text-xs rounded-xl"
               />
             </div>
@@ -231,7 +200,6 @@ export function StockOperationsView() {
                 <h4 className="font-semibold text-sm text-slate-900 dark:text-white mt-0.5">
                   {selectedProduct.name}
                 </h4>
-                <p className="text-xs text-slate-400 mt-0.5">{selectedProduct.category} • {selectedProduct.brand}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
@@ -323,3 +291,4 @@ export function StockOperationsView() {
     </div>
   )
 }
+

@@ -34,10 +34,9 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ onNavigateTab }: AppHeaderProps) {
-  const { currentUser, logout, switchRole, createBackup, resetRequests, products } = useInventory()
+  const { currentUser, logout, switchRole, createBackup, products } = useInventory()
   const { theme, setTheme } = useTheme()
 
-  const pendingResets = resetRequests.filter((r) => r.status === 'pending').length
   const lowStockCount = products.filter((p) => p.status === 'low_stock' || p.status === 'out_of_stock').length
 
   const roleLabels: Record<UserRole, { label: string; badgeClass: string }> = {
