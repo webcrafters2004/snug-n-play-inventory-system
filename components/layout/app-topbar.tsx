@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useInventory } from '@/context/inventory-context'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,8 @@ import {
   Edit3,
   Eye,
   ChevronDown,
+  Clock,
+  Store,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -35,11 +37,33 @@ interface AppTopbarProps {
 export function AppTopbar({ activeTab, onToggleMobileMenu }: AppTopbarProps) {
   const { currentUser, switchRole, createBackup } = useInventory()
   const { theme, setTheme } = useTheme()
+  const [liveTime, setLiveTime] = useState<string>('')
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date()
+      const formatted = now.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      })
+      setLiveTime(formatted)
+    }
+    updateClock()
+    const timer = setInterval(updateClock, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const tabTitles: Record<string, string> = {
     dashboard: 'Dashboard',
     inventory: 'Products & Stock',
     stock: 'Stock In & Out Operations',
+    reports: 'Reports & 3-Way Audit',
     backup: 'Database Backups',
     users: 'Users & Access Control',
     profile: 'System Settings',
@@ -47,7 +71,8 @@ export function AppTopbar({ activeTab, onToggleMobileMenu }: AppTopbarProps) {
 
   const roleLabels: Record<UserRole, { label: string; badgeClass: string }> = {
     system_admin: { label: 'System Admin', badgeClass: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' },
-    inventory_editor: { label: 'Inventory Editor', badgeClass: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' },
+    store: { label: 'Store (Rehmat)', badgeClass: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' },
+    inventory_editor: { label: 'Inventory Editor', badgeClass: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800' },
     operations: { label: 'Operations', badgeClass: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
     accounts: { label: 'Accounts', badgeClass: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
     manager: { label: 'Manager', badgeClass: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' },
@@ -75,13 +100,21 @@ export function AppTopbar({ activeTab, onToggleMobileMenu }: AppTopbarProps) {
             {tabTitles[activeTab] || 'Inventory Portal'}
           </h1>
           <p className="text-[11px] text-muted-foreground hidden sm:block">
-            Snug N Play Inventory System
+            Snug N Play Inventory System • Karachi Site
           </p>
         </div>
       </div>
 
+      {/* Center: Live Day, Date, Time, Year Clock */}
+      <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <Clock className="w-3.5 h-3.5 text-slate-400" />
+        <span className="font-mono">{liveTime || 'Loading date & time...'}</span>
+      </div>
+
       {/* Right: Role Switcher, Quick Backup & Theme */}
       <div className="flex items-center gap-2 sm:gap-3">
+
         {/* Role Switcher Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

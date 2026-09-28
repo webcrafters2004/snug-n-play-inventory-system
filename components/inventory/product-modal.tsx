@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useInventory } from '@/context/inventory-context'
-import { Product } from '@/lib/types'
+import { Product, WAREHOUSE_LOCATIONS } from '@/lib/types'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Package } from 'lucide-react'
+import { Package, Building2, ImageIcon } from 'lucide-react'
 
 interface ProductModalProps {
   isOpen: boolean
@@ -42,7 +42,12 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
   const [category, setCategory] = useState(CATEGORIES[0])
   const [brand, setBrand] = useState('Snug N Play Original')
   const [supplier, setSupplier] = useState('PlaySafe Foam Ltd')
+  const [location, setLocation] = useState<string>('Store')
   const [quantity, setQuantity] = useState(10)
+  const [minStock, setMinStock] = useState(5)
+  const [totalDamaged, setTotalDamaged] = useState(0)
+  const [imageUrl, setImageUrl] = useState('')
+  const [itemStatus, setItemStatus] = useState<'Active' | 'Inactive' | 'Hold'>('Active')
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
@@ -52,7 +57,12 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
       setCategory(product.category)
       setBrand(product.brand)
       setSupplier(product.supplier)
+      setLocation(product.location || product.warehouse || 'Store')
       setQuantity(product.quantity)
+      setMinStock(product.minStock || 5)
+      setTotalDamaged(product.totalDamaged || 0)
+      setImageUrl(product.imageUrl || '')
+      setItemStatus(product.itemStatus || 'Active')
       setNotes(product.notes || '')
     } else {
       setSku(`SNP-${Math.floor(1000 + Math.random() * 9000)}`)
@@ -60,7 +70,12 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
       setCategory(CATEGORIES[0])
       setBrand('Snug N Play Original')
       setSupplier('PlaySafe Foam Ltd')
+      setLocation('Store')
       setQuantity(20)
+      setMinStock(5)
+      setTotalDamaged(0)
+      setImageUrl('')
+      setItemStatus('Active')
       setNotes('')
     }
   }, [product, isOpen])
@@ -76,10 +91,14 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
         category,
         brand,
         supplier,
-        warehouse: 'Main Hub',
+        location,
+        warehouse: location,
         quantity,
-        minStock: 5,
+        minStock,
         maxStock: 100,
+        totalDamaged,
+        imageUrl: imageUrl.trim() || undefined,
+        itemStatus,
         notes,
       })
     } else {
@@ -89,11 +108,15 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
         category,
         brand,
         supplier,
-        warehouse: 'Main Hub',
+        location,
+        warehouse: location,
         quantity,
-        minStock: 5,
+        minStock,
         maxStock: 100,
-        isActive: true,
+        totalDamaged,
+        imageUrl: imageUrl.trim() || undefined,
+        itemStatus,
+        isActive: itemStatus === 'Active',
         notes,
       })
     }
@@ -103,14 +126,14 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg bg-card text-card-foreground border-border max-h-[90vh] overflow-y-auto rounded-2xl">
+      <DialogContent className="max-w-xl bg-card text-card-foreground border-border max-h-[90vh] overflow-y-auto rounded-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <Package className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             {product ? 'Edit Product Item' : 'Add New Inventory SKU'}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Enter basic product information and current quantity on hand.
+            Configure product catalog details, warehouse location, image, and safety thresholds.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,6 +179,39 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
+              <Label className="text-xs font-semibold flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                Warehouse Location
+              </Label>
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full h-9 text-xs px-2.5 rounded-xl border border-input bg-background text-foreground font-semibold"
+              >
+                {WAREHOUSE_LOCATIONS.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Item Status</Label>
+              <select
+                value={itemStatus}
+                onChange={(e) => setItemStatus(e.target.value as any)}
+                className="w-full h-9 text-xs px-2.5 rounded-xl border border-input bg-background text-foreground font-medium"
+              >
+                <option value="Active">Active</option>
+                <option value="Hold">Hold / Inspection</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
               <Label className="text-xs font-semibold">Brand</Label>
               <Input value={brand} onChange={(e) => setBrand(e.target.value)} className="h-9 text-xs rounded-xl" />
             </div>
@@ -166,16 +222,55 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
             </div>
           </div>
 
-          <div className="space-y-1 p-3 bg-muted/40 rounded-xl border">
-            <Label className="text-xs font-bold text-slate-900 dark:text-white">Quantity on Hand (Units) *</Label>
+          {/* Photo URL */}
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold flex items-center gap-1">
+              <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
+              Product Image URL (Optional)
+            </Label>
             <Input
-              type="number"
-              min="0"
-              required
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-              className="h-10 text-sm font-bold rounded-xl bg-background"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://snugnplay.com/cdn/shop/files/toy.jpg"
+              className="h-9 text-xs rounded-xl"
             />
+          </div>
+
+          {/* Quantities & Safety Points */}
+          <div className="grid grid-cols-3 gap-3 p-3 bg-muted/40 rounded-2xl border">
+            <div className="space-y-1">
+              <Label className="text-[11px] font-bold text-slate-900 dark:text-white">Physical Stock *</Label>
+              <Input
+                type="number"
+                min="0"
+                required
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                className="h-9 text-xs font-bold rounded-xl bg-background"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Min Alert Stock</Label>
+              <Input
+                type="number"
+                min="0"
+                value={minStock}
+                onChange={(e) => setMinStock(parseInt(e.target.value) || 0)}
+                className="h-9 text-xs font-semibold rounded-xl bg-background"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-rose-600 dark:text-rose-400">Damaged Units</Label>
+              <Input
+                type="number"
+                min="0"
+                value={totalDamaged}
+                onChange={(e) => setTotalDamaged(parseInt(e.target.value) || 0)}
+                className="h-9 text-xs font-bold rounded-xl bg-background text-rose-600 dark:text-rose-400"
+              />
+            </div>
           </div>
 
           <div className="space-y-1">

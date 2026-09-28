@@ -13,6 +13,7 @@ import {
   Plus,
   ArrowRight,
   AlertCircle,
+  FileSpreadsheet,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -103,6 +104,26 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
             </Button>
           )}
         </div>
+      </div>
+
+      {/* Quick Access to Daily Reports & Categorized Backups */}
+      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <FileSpreadsheet className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">Daily Reports & 4 Categorized Backups</h3>
+            <p className="text-[11px] text-slate-400">Damage Stock, Dispatched Parcels, Master Catalog & Shopify 3-Way Reconciliation</p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => onNavigate('reports')}
+          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs h-8 px-3 rounded-xl shadow-xs self-start sm:self-auto shrink-0"
+        >
+          View Reports & Backups
+        </Button>
       </div>
 
       {/* 4 Focused KPI Cards (Clear, prominent numbers, non-technical readable wording) */}

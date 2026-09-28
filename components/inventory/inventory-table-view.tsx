@@ -19,11 +19,22 @@ import {
 import { exportProductsToExcel, downloadSampleTemplate } from '@/lib/excel-helper'
 import { ExcelImportModal } from './excel-import-modal'
 import { ProductModal } from './product-modal'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { AlertTriangle } from 'lucide-react'
 
 export function InventoryTableView() {
   const {
     products,
     deleteProduct,
+    deleteAllInventory,
+    isAdmin,
     canAddEditProducts,
     canDeleteProducts,
     canImportExcel,
@@ -37,6 +48,8 @@ export function InventoryTableView() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
+  const [resetConfirmText, setResetConfirmText] = useState('')
 
   const filteredProducts = products.filter((p) => {
     const matchesSearch =
@@ -149,6 +162,22 @@ export function InventoryTableView() {
               Add Product
             </Button>
           )}
+
+          {isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setResetConfirmText('')
+                setIsResetConfirmOpen(true)
+              }}
+              className="text-xs h-9 px-3 rounded-xl border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+              title="Reset All Inventory"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              Reset All
+            </Button>
+          )}
         </div>
       </div>
 
@@ -211,12 +240,24 @@ export function InventoryTableView() {
 
                     {/* 2. Product Name */}
                     <td className="py-3.5 px-5">
-                      <span className="font-semibold text-slate-900 dark:text-white block text-xs" title={p.name}>
-                        {p.name}
-                      </span>
-                      <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
-                        {p.quantity.toLocaleString()} Units on hand
-                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-900 dark:text-white block text-xs" title={p.name}>
+                          {p.name}
+                        </span>
+                        {p.totalDamaged && p.totalDamaged > 0 ? (
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400">
+                            {p.totalDamaged} damaged
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {p.quantity.toLocaleString()} Units on hand
+                        </span>
+                        <span className="text-[10px] px-2 py-0.2 rounded-full font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {p.location || 'Store'}
+                        </span>
+                      </div>
                     </td>
 
                     {/* 3. Status */}
@@ -288,6 +329,57 @@ export function InventoryTableView() {
         }}
         product={editingProduct}
       />
+
+      {/* Danger Zone: Reset All Confirmation Modal */}
+      <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+        <DialogContent className="max-w-md bg-card text-card-foreground border-border rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-rose-600 dark:text-rose-400">
+              <AlertTriangle className="w-5 h-5 text-rose-600" />
+              Reset All Inventory
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              This will irreversibly delete all products, stock quantities, and movement history. This cannot be undone!
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-3">
+            <p className="text-xs text-slate-700 dark:text-slate-300">
+              Please type <strong className="font-mono text-rose-600 select-all">DELETE ALL</strong> below to confirm:
+            </p>
+            <Input
+              value={resetConfirmText}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              placeholder="DELETE ALL"
+              className="h-10 text-xs font-mono font-bold"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsResetConfirmOpen(false)}
+              className="text-xs h-9 rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={resetConfirmText !== 'DELETE ALL'}
+              onClick={() => {
+                deleteAllInventory()
+                setIsResetConfirmOpen(false)
+              }}
+              className="bg-rose-600 hover:bg-rose-500 text-white text-xs h-9 font-bold rounded-xl shadow-xs"
+            >
+              Confirm Full Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

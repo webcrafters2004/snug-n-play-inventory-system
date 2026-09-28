@@ -31,6 +31,7 @@ interface InventoryContextType {
   backups: BackupItem[]
   auditLogs: AuditLogItem[]
   settings: SystemSettings
+  resetRequests: PasswordResetRequest[]
   // Granular Permissions for Current User
   canAddEditProducts: boolean
   canDeleteProducts: boolean
@@ -41,21 +42,48 @@ interface InventoryContextType {
   canManageSettings: boolean
   canManageUsers: boolean
   isAdmin: boolean
+  isStore: boolean
   // Auth & Password
   login: (identifier: string, password?: string) => boolean
   logout: () => void
   switchRole: (role: UserRole) => void
   changeUserPassword: (userId: string, newPass: string) => void
+  requestPasswordReset: (username: string) => boolean
+  resolvePasswordReset: (requestId: string, newPass: string) => void
+  forceLogoutUser: (userId: string) => void
   // Inventory
   addProduct: (data: Omit<Product, 'id' | 'updatedAt' | 'status'>) => void
   updateProduct: (id: string, updates: Partial<Product>) => void
   deleteProduct: (id: string) => void
+  deleteAllInventory: () => void
   adjustStock: (productId: string, type: TransactionType, quantity: number, reason: string, reference?: string) => void
+  recordMovement: (data: {
+    productId: string
+    type: TransactionType
+    quantity: number
+    reason: string
+    orderReference?: string
+    attachmentUrl?: string
+    fromLocation?: string
+    toLocation?: string
+    direction?: 'increase' | 'decrease'
+  }) => boolean
+  deleteTransaction: (id: string) => void
   bulkImportProducts: (importedList: Partial<Product>[]) => { added: number; updated: number }
-  // Backups
+  // Physical Count & 3-Way Audit
+  updatePhysicalCount: (productId: string, physicalCount: number) => void
+  importShopifyStock: (records: { sku: string; stock: number }[]) => number
+  importQuickBooksStock: (records: { sku: string; stock: number }[]) => number
+  // Backups & Categorized Reports
   createBackup: (type?: 'manual' | 'automated', name?: string) => BackupItem
+  createCategorizedBackup: (category: 'all' | 'damage' | 'parcels' | 'inventory' | 'shopify') => void
   restoreBackup: (jsonContent: string) => boolean
   deleteBackup: (id: string) => void
+  // Workflow Check-ins & Reminders
+  dailyCheckin: { status: 'pending' | 'completed'; dayLabel: string }
+  respondDailyCheckin: (status: 'yes' | 'no') => void
+  monthlyAudit: { storeConfirmed: boolean; accountsConfirmed: boolean; opsConfirmed: boolean; allDone: boolean }
+  confirmMonthlyAudit: () => void
   // Users & Granular Access Control
   createUser: (data: Omit<User, 'id' | 'createdAt' | 'status'>) => void
   updateUser: (id: string, updates: Partial<User>) => void
@@ -71,13 +99,14 @@ interface InventoryContextType {
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
 
 const STORAGE_KEYS = {
-  USERS: 'snp_users_v4',
-  PRODUCTS: 'snp_products_v4',
-  TRANSACTIONS: 'snp_tx_v4',
-  BACKUPS: 'snp_backups_v4',
-  AUDIT: 'snp_audit_v4',
-  SETTINGS: 'snp_settings_v4',
-  ACTIVE_USER: 'snp_active_user_v4',
+  USERS: 'snp_users_v5',
+  PRODUCTS: 'snp_products_v5',
+  TRANSACTIONS: 'snp_tx_v5',
+  BACKUPS: 'snp_backups_v5',
+  AUDIT: 'snp_audit_v5',
+  SETTINGS: 'snp_settings_v5',
+  ACTIVE_USER: 'snp_active_user_v5',
+  RESET_REQUESTS: 'snp_resets_v5',
 }
 
 export function InventoryProvider({ children }: { children: React.ReactNode }) {
@@ -89,6 +118,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const [backups, setBackups] = useState<BackupItem[]>(INITIAL_BACKUPS)
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS)
   const [settings, setSettings] = useState<SystemSettings>(INITIAL_SETTINGS)
+  const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([])
 
   // Load state on mount
   useEffect(() => {
@@ -100,10 +130,10 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       const storedAudit = localStorage.getItem(STORAGE_KEYS.AUDIT)
       const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS)
       const storedActiveUser = localStorage.getItem(STORAGE_KEYS.ACTIVE_USER)
+      const storedResets = localStorage.getItem(STORAGE_KEYS.RESET_REQUESTS)
 
       if (storedUsers) {
         const parsed = JSON.parse(storedUsers)
-        // Ensure every user has permissions structure
         const normalized = parsed.map((u: User) => ({
           ...u,
           permissions: u.permissions || ROLE_DEFAULT_PERMISSIONS[u.role] || ROLE_DEFAULT_PERMISSIONS.viewer,
@@ -115,6 +145,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       if (storedBackups) setBackups(JSON.parse(storedBackups))
       if (storedAudit) setAuditLogs(JSON.parse(storedAudit))
       if (storedSettings) setSettings(JSON.parse(storedSettings))
+      if (storedResets) setResetRequests(JSON.parse(storedResets))
 
       if (storedActiveUser) {
         const u = JSON.parse(storedActiveUser)
@@ -142,6 +173,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(backups))
       localStorage.setItem(STORAGE_KEYS.AUDIT, JSON.stringify(auditLogs))
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings))
+      localStorage.setItem(STORAGE_KEYS.RESET_REQUESTS, JSON.stringify(resetRequests))
       if (currentUser) {
         localStorage.setItem(STORAGE_KEYS.ACTIVE_USER, JSON.stringify(currentUser))
       } else {
@@ -150,7 +182,32 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('Storage sync error:', e)
     }
-  }, [users, products, transactions, backups, auditLogs, settings, currentUser, isLoaded])
+  }, [users, products, transactions, backups, auditLogs, settings, currentUser, resetRequests, isLoaded])
+
+  // Daily Automated Backup Seed
+  useEffect(() => {
+    if (!isLoaded) return
+    const today = new Date().toISOString().split('T')[0]
+    const hasTodayBackup = backups.some((b) => b.type === 'automated' && b.createdAt.includes(today))
+
+    if (!hasTodayBackup && settings.autoBackupEnabled) {
+      const autoItem: BackupItem = {
+        id: `bcp-auto-${Date.now()}`,
+        name: `SnugNPlay_Auto_Daily_Backup_${today}.xlsx`,
+        type: 'automated',
+        category: 'all',
+        status: 'completed',
+        sizeKb: parseFloat((products.length * 1.8 + 24).toFixed(1)),
+        recordsCount: products.length,
+        createdBy: 'Daily Automated Engine (2:00 AM Cron)',
+        createdAt: `${today} 02:00:00 AM`,
+        checksum: `sha256-${Math.random().toString(36).substring(2, 9)}`,
+        format: 'xlsx',
+      }
+      setBackups((prev) => [autoItem, ...prev])
+      setSettings((prev) => ({ ...prev, lastBackupDate: today }))
+    }
+  }, [isLoaded, backups, products.length, settings.autoBackupEnabled])
 
   const addAuditLog = (action: string, module: AuditLogItem['module'], description: string) => {
     const newLog: AuditLogItem = {
@@ -163,11 +220,12 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       userEmail: currentUser?.email || 'system@snugnplay.com',
       role: currentUser?.role || 'system_admin',
     }
-    setAuditLogs((prev) => [newLog, ...prev.slice(0, 99)])
+    setAuditLogs((prev) => [newLog, ...prev.slice(0, 199)])
   }
 
   // Dynamic Granular RBAC Permissions
   const isAdmin = currentUser?.role === 'system_admin'
+  const isStore = currentUser?.role === 'store' || currentUser?.role === 'inventory_editor'
   const userPerms = currentUser?.permissions || (currentUser ? ROLE_DEFAULT_PERMISSIONS[currentUser.role] : ROLE_DEFAULT_PERMISSIONS.viewer)
 
   const canAddEditProducts = isAdmin || !!userPerms?.canAddEditProducts
@@ -181,10 +239,16 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
 
   // Auth: Email OR Username login
   const login = (identifier: string, pass = ''): boolean => {
+    let clean = identifier.trim().toLowerCase()
+    if (!clean.includes('@') && !clean.includes('admin')) {
+      clean = clean + '@snugnplay.com'
+    }
+
     const target = users.find(
       (u) =>
-        u.email.toLowerCase() === identifier.trim().toLowerCase() ||
+        u.email.toLowerCase() === clean ||
         u.username.toLowerCase() === identifier.trim().toLowerCase() ||
+        u.email.toLowerCase() === identifier.trim().toLowerCase() ||
         u.role === identifier
     )
 
@@ -193,10 +257,10 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         toast.error('This user account is disabled. Contact System Admin.')
         return false
       }
-      const updated = { ...target, lastLogin: new Date().toLocaleString() }
+      const updated = { ...target, lastLogin: new Date().toLocaleString(), sessionActive: true }
       setCurrentUser(updated)
       setUsers((prev) => prev.map((u) => (u.id === target.id ? updated : u)))
-      addAuditLog('USER_LOGIN', 'Auth', `${target.name} logged in`)
+      addAuditLog('USER_LOGIN', 'Auth', `${target.name} logged in (${target.role})`)
       toast.success(`Welcome back, ${target.name}`)
       return true
     } else {
@@ -208,6 +272,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     if (currentUser) {
       addAuditLog('USER_LOGOUT', 'Auth', `${currentUser.name} signed out`)
+      setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? { ...u, sessionActive: false } : u)))
     }
     setCurrentUser(null)
     toast.info('Signed out successfully.')
@@ -217,13 +282,12 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const existing = users.find((u) => u.role === role && u.status === 'active')
     if (existing) {
       setCurrentUser(existing)
-      toast.success(`Active profile: ${existing.name}`)
+      toast.success(`Active profile switched: ${existing.name}`)
     }
   }
 
-  // Admin changes password for any user
   const changeUserPassword = (userId: string, newPass: string) => {
-    if (!isAdmin) {
+    if (!isAdmin && currentUser?.id !== userId) {
       toast.error('Only System Admin can reset user passwords.')
       return
     }
@@ -234,11 +298,53 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser((prev) => (prev ? { ...prev, password: newPass } : null))
     }
     const target = users.find((u) => u.id === userId)
-    addAuditLog('PASSWORD_CHANGED', 'Users', `System Admin updated password for ${target?.name || userId}`)
+    addAuditLog('PASSWORD_CHANGED', 'Users', `Password updated for ${target?.name || userId}`)
     toast.success(`Password updated for ${target?.name || 'user'}`)
   }
 
-  // Product status helper
+  const requestPasswordReset = (username: string): boolean => {
+    const u = users.find(
+      (user) =>
+        user.username.toLowerCase() === username.trim().toLowerCase() ||
+        user.email.toLowerCase() === username.trim().toLowerCase()
+    )
+    if (!u) {
+      toast.error(`No user found with username "${username}".`)
+      return false
+    }
+
+    const newReq: PasswordResetRequest = {
+      id: `req-${Date.now()}`,
+      userId: u.id,
+      username: u.username,
+      fullName: u.name,
+      createdAt: new Date().toLocaleString(),
+    }
+
+    setResetRequests((prev) => [newReq, ...prev.filter((r) => r.userId !== u.id)])
+    addAuditLog('PASSWORD_RESET_REQUESTED', 'Auth', `Reset requested for ${u.username}`)
+    toast.success('Password reset request forwarded to System Admin.')
+    return true
+  }
+
+  const resolvePasswordReset = (requestId: string, newPass: string) => {
+    if (!isAdmin) return
+    const req = resetRequests.find((r) => r.id === requestId)
+    if (!req) return
+
+    changeUserPassword(req.userId, newPass)
+    setResetRequests((prev) => prev.filter((r) => r.id !== requestId))
+    toast.success(`Password reset completed for ${req.username}.`)
+  }
+
+  const forceLogoutUser = (userId: string) => {
+    if (!isAdmin) return
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, sessionActive: false } : u)))
+    const target = users.find((u) => u.id === userId)
+    addAuditLog('FORCE_LOGOUT', 'Users', `Force logout executed for ${target?.name || userId}`)
+    toast.success(`Active session cleared for ${target?.name || 'user'}.`)
+  }
+
   const calculateStatus = (qty: number, min: number, max: number): Product['status'] => {
     if (qty <= 0) return 'out_of_stock'
     if (qty <= min) return 'low_stock'
@@ -255,12 +361,18 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const newProduct: Product = {
       ...data,
       id: `prod-${Date.now()}`,
+      location: data.location || data.warehouse || 'Store',
+      itemStatus: data.itemStatus || 'Active',
+      totalDamaged: data.totalDamaged || 0,
+      physicalStock: data.quantity,
+      shopifyStock: data.quantity,
+      qbStock: data.quantity,
       status,
       updatedAt: new Date().toISOString().split('T')[0],
     }
 
     setProducts((prev) => [newProduct, ...prev])
-    addAuditLog('PRODUCT_CREATE', 'Inventory', `Created product: ${newProduct.name} (${newProduct.sku})`)
+    addAuditLog('PRODUCT_CREATE', 'Inventory', `Created product: ${newProduct.name} (${newProduct.sku}) at ${newProduct.location}`)
     toast.success(`Product ${newProduct.name} created.`)
   }
 
@@ -299,32 +411,75 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     toast.success('Product removed from inventory.')
   }
 
-  const adjustStock = (
-    productId: string,
-    type: TransactionType,
-    quantity: number,
-    reason: string,
-    reference?: string
-  ) => {
-    if (!canAdjustStock) {
-      toast.error('Permission denied: You do not have access to adjust stock.')
+  const deleteAllInventory = () => {
+    if (!isAdmin) {
+      toast.error('Only System Admin can delete all inventory records.')
       return
     }
-    const product = products.find((p) => p.id === productId)
-    if (!product) return
+    setProducts([])
+    setTransactions([])
+    addAuditLog('INVENTORY_RESET', 'Inventory', 'System Admin cleared all inventory and movement ledger records.')
+    toast.success('All products and stock movements deleted. Ready for fresh import.')
+  }
 
-    let newQuantity = product.quantity
-    if (type === 'stock_in' || type === 'return') {
-      newQuantity += quantity
-    } else if (type === 'stock_out' || type === 'damage') {
-      newQuantity = Math.max(0, newQuantity - quantity)
-    } else if (type === 'adjustment') {
-      newQuantity = quantity
+  // Enhanced Movement Recorder (Handles Stock In, Stock Out, Return, Damage, Transfer, Adjustment, Order Cancel)
+  const recordMovement = (data: {
+    productId: string
+    type: TransactionType
+    quantity: number
+    reason: string
+    orderReference?: string
+    attachmentUrl?: string
+    fromLocation?: string
+    toLocation?: string
+    direction?: 'increase' | 'decrease'
+  }): boolean => {
+    if (!canAdjustStock) {
+      toast.error('Permission denied: You do not have access to record movements.')
+      return false
     }
 
-    const tx: Transaction = {
+    const product = products.find((p) => p.id === data.productId)
+    if (!product) {
+      toast.error('Product not found.')
+      return false
+    }
+
+    const { type, quantity, reason, orderReference, attachmentUrl, fromLocation, toLocation, direction } = data
+    if (quantity <= 0) {
+      toast.error('Quantity must be greater than zero.')
+      return false
+    }
+
+    let newQuantity = product.quantity
+    let totalDamaged = product.totalDamaged || 0
+
+    if (type === 'stock_in' || type === 'return' || type === 'order_cancel') {
+      newQuantity += quantity
+    } else if (type === 'stock_out') {
+      if (quantity > product.quantity) {
+        toast.error(`Cannot dispatch ${quantity} units: Only ${product.quantity} units available.`)
+        return false
+      }
+      newQuantity -= quantity
+    } else if (type === 'damage') {
+      newQuantity = Math.max(0, newQuantity - quantity)
+      totalDamaged += quantity
+    } else if (type === 'transfer') {
+      // Internal warehouse transfer
+    } else if (type === 'adjustment') {
+      if (direction === 'decrease') {
+        newQuantity = Math.max(0, newQuantity - quantity)
+      } else if (direction === 'increase') {
+        newQuantity += quantity
+      } else {
+        newQuantity = quantity
+      }
+    }
+
+    const newTx: Transaction = {
       id: `tx-${Date.now()}`,
-      productId,
+      productId: product.id,
       productName: product.name,
       sku: product.sku,
       type,
@@ -332,15 +487,131 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       previousQuantity: product.quantity,
       newQuantity,
       reason,
-      reference: reference || `REF-${Math.floor(1000 + Math.random() * 9000)}`,
+      orderReference: orderReference || (type === 'stock_out' ? `ORD-${Math.floor(10000 + Math.random() * 90000)}` : undefined),
+      attachmentUrl,
+      fromLocation: fromLocation || product.location || 'Store',
+      toLocation: toLocation || (type === 'transfer' ? toLocation : undefined),
       date: new Date().toLocaleString(),
-      userName: currentUser?.name || 'Inventory Operator',
+      userName: currentUser?.name || 'Store Staff',
+    }
+
+    setTransactions((prev) => [newTx, ...prev])
+    updateProduct(product.id, {
+      quantity: newQuantity,
+      totalDamaged,
+      location: type === 'transfer' && toLocation ? toLocation : product.location,
+    })
+
+    addAuditLog('STOCK_MOVEMENT', 'Stock', `${type.toUpperCase()}: ${product.sku} by ${quantity} units (${reason || 'N/A'})`)
+    toast.success(`Recorded ${type.replace('_', ' ')}: ${product.sku} (${newQuantity} in stock)`)
+    return true
+  }
+
+  // Legacy adjustStock wrapper
+  const adjustStock = (productId: string, type: TransactionType, quantity: number, reason: string, reference?: string) => {
+    recordMovement({
+      productId,
+      type,
+      quantity,
+      reason,
+      orderReference: reference,
+    })
+  }
+
+  // Movement Reversal on Delete
+  const deleteTransaction = (id: string) => {
+    if (!isAdmin) {
+      toast.error('Only System Admin can delete and reverse stock movements.')
+      return
+    }
+
+    const tx = transactions.find((t) => t.id === id)
+    if (!tx) return
+
+    const product = products.find((p) => p.id === tx.productId || p.sku === tx.sku)
+    if (product) {
+      let reversedQty = product.quantity
+      let reversedDamaged = product.totalDamaged || 0
+
+      // Reverse effect
+      if (tx.type === 'stock_in' || tx.type === 'return' || tx.type === 'order_cancel') {
+        reversedQty = Math.max(0, reversedQty - tx.quantity)
+      } else if (tx.type === 'stock_out') {
+        reversedQty += tx.quantity
+      } else if (tx.type === 'damage') {
+        reversedQty += tx.quantity
+        reversedDamaged = Math.max(0, reversedDamaged - tx.quantity)
+      }
+
+      updateProduct(product.id, { quantity: reversedQty, totalDamaged: reversedDamaged })
+    }
+
+    setTransactions((prev) => prev.filter((t) => t.id !== id))
+    addAuditLog('MOVEMENT_REVERSED', 'Stock', `Reversed movement ${tx.id} for ${tx.sku} (${tx.quantity} units)`)
+    toast.success(`Movement deleted and stock reversed for ${tx.sku}.`)
+  }
+
+  // Physical Count & Variance calculation
+  const updatePhysicalCount = (productId: string, physicalCount: number) => {
+    const product = products.find((p) => p.id === productId)
+    if (!product) return
+
+    const variance = physicalCount - product.quantity
+
+    const tx: Transaction = {
+      id: `tx-pc-${Date.now()}`,
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      type: 'physical_count',
+      quantity: physicalCount,
+      previousQuantity: product.quantity,
+      newQuantity: physicalCount,
+      variance,
+      reason: `Physical Count: ${physicalCount} vs System: ${product.quantity} (Variance: ${variance > 0 ? '+' : ''}${variance})`,
+      date: new Date().toLocaleString(),
+      userName: currentUser?.name || 'Audit Team',
     }
 
     setTransactions((prev) => [tx, ...prev])
-    updateProduct(productId, { quantity: newQuantity })
-    addAuditLog('STOCK_ADJUSTMENT', 'Stock', `${type.toUpperCase()}: ${product.sku} altered by ${quantity} units`)
-    toast.success(`Stock updated: ${product.sku} (${newQuantity} Units)`)
+    updateProduct(product.id, { quantity: physicalCount, physicalStock: physicalCount })
+    addAuditLog('PHYSICAL_COUNT', 'Audit', `Physical audit for ${product.sku}: ${physicalCount} units (Variance: ${variance})`)
+    toast.success(`Physical count saved. Variance: ${variance > 0 ? '+' : ''}${variance}`)
+  }
+
+  // 3-Way Reconciliation Imports
+  const importShopifyStock = (records: { sku: string; stock: number }[]) => {
+    let matched = 0
+    setProducts((prev) =>
+      prev.map((p) => {
+        const found = records.find((r) => r.sku.toLowerCase() === p.sku.toLowerCase())
+        if (found) {
+          matched++
+          return { ...p, shopifyStock: found.stock }
+        }
+        return p
+      })
+    )
+    addAuditLog('SHOPIFY_IMPORT', 'Audit', `Shopify Stock Import: ${matched} SKUs synchronized`)
+    toast.success(`Shopify Stock Import: ${matched} SKU(s) matched.`)
+    return matched
+  }
+
+  const importQuickBooksStock = (records: { sku: string; stock: number }[]) => {
+    let matched = 0
+    setProducts((prev) =>
+      prev.map((p) => {
+        const found = records.find((r) => r.sku.toLowerCase() === p.sku.toLowerCase())
+        if (found) {
+          matched++
+          return { ...p, qbStock: found.stock }
+        }
+        return p
+      })
+    )
+    addAuditLog('QB_IMPORT', 'Audit', `QuickBooks Stock Import: ${matched} SKUs synchronized`)
+    toast.success(`QuickBooks Stock Import: ${matched} SKU(s) matched.`)
+    return matched
   }
 
   const bulkImportProducts = (importedList: Partial<Product>[]) => {
@@ -365,6 +636,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
           copy[existingIdx] = {
             ...copy[existingIdx],
             ...item,
+            location: item.location || copy[existingIdx].location || 'Store',
             status,
             updatedAt: new Date().toISOString().split('T')[0],
           }
@@ -378,10 +650,16 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
             brand: item.brand || 'Snug N Play',
             supplier: item.supplier || 'PlaySafe',
             warehouse: item.warehouse || 'Main Hub - Karachi',
+            location: item.location || 'Store',
             quantity: qty,
             minStock: min,
             maxStock: max,
             status,
+            itemStatus: 'Active',
+            totalDamaged: item.totalDamaged || 0,
+            physicalStock: qty,
+            shopifyStock: qty,
+            qbStock: qty,
             isActive: true,
             notes: item.notes || '',
             updatedAt: new Date().toISOString().split('T')[0],
@@ -397,7 +675,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     return { added, updated }
   }
 
-  // Backups
+  // Full System Backup (JSON)
   const createBackup = (type: 'manual' | 'automated' = 'manual', customName?: string): BackupItem => {
     const dump = {
       timestamp: new Date().toISOString(),
@@ -421,13 +699,15 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       id: `bcp-${Date.now()}`,
       name: backupName,
       type,
+      category: 'all',
       status: 'completed',
       sizeKb,
       recordsCount: products.length + transactions.length,
-      createdBy: currentUser ? `${currentUser.name}` : 'Automated 30-Day Cron',
+      createdBy: currentUser ? `${currentUser.name}` : 'Automated Cron',
       createdAt: new Date().toLocaleString(),
       checksum: `sha256-${Math.random().toString(36).substring(2, 10)}`,
       downloadPayload: jsonString,
+      format: 'json',
     }
 
     setBackups((prev) => [newBackup, ...prev])
@@ -447,6 +727,47 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     }
 
     return newBackup
+  }
+
+  // Categorized XLS Backups (Damage, Parcels, Inventory, Shopify)
+  const createCategorizedBackup = (category: 'all' | 'damage' | 'parcels' | 'inventory' | 'shopify') => {
+    const dateStr = new Date().toISOString().split('T')[0]
+    let name = ''
+
+    if (category === 'damage') {
+      name = `SnugNPlay_Damage_Report_${dateStr}.xlsx`
+      exportDamageReport(products, transactions, name)
+    } else if (category === 'parcels') {
+      name = `SnugNPlay_Parcels_Dispatched_${dateStr}.xlsx`
+      exportParcelsDispatchedReport(transactions, name)
+    } else if (category === 'inventory') {
+      name = `SnugNPlay_Inventory_Master_${dateStr}.xlsx`
+      exportProductsToExcel(products, name)
+    } else if (category === 'shopify') {
+      name = `SnugNPlay_Shopify_3Way_Reconciliation_${dateStr}.xlsx`
+      exportShopify3WayAuditReport(products, name)
+    } else {
+      createBackup('manual')
+      return
+    }
+
+    const newBackup: BackupItem = {
+      id: `bcp-${category}-${Date.now()}`,
+      name,
+      type: 'manual',
+      category,
+      status: 'completed',
+      sizeKb: parseFloat((products.length * 1.5 + 18).toFixed(1)),
+      recordsCount: category === 'parcels' ? transactions.filter((t) => t.type === 'stock_out').length : products.length,
+      createdBy: currentUser?.name || 'Staff',
+      createdAt: new Date().toLocaleString(),
+      checksum: `sha256-${Math.random().toString(36).substring(2, 9)}`,
+      format: 'xlsx',
+    }
+
+    setBackups((prev) => [newBackup, ...prev])
+    addAuditLog('BACKUP_GENERATED', 'Backup', `Exported ${category.toUpperCase()} backup spreadsheet: ${name}`)
+    toast.success(`Generated XLS Backup: "${name}"`)
   }
 
   const restoreBackup = (jsonContent: string): boolean => {
@@ -473,7 +794,52 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     toast.info('Backup snapshot deleted.')
   }
 
-  // Users & Granular Access Control
+  // Workflows: Daily Check-in & Monthly Audit
+  const dailyCheckin = {
+    status: (settings.dailyCheckinStatus as 'pending' | 'completed') || 'pending',
+    dayLabel: 'Store Daily Check-in ("Aaj ka kaam hogaya?")',
+  }
+
+  const respondDailyCheckin = (response: 'yes' | 'no') => {
+    const isCompleted = response === 'yes'
+    setSettings((prev) => ({ ...prev, dailyCheckinStatus: isCompleted ? 'completed' : 'pending' }))
+    addAuditLog('DAILY_CHECKIN', 'Audit', `Store Check-in responded: ${response.toUpperCase()} by ${currentUser?.name}`)
+    if (isCompleted) {
+      toast.success('Shukriya! Daily stock status completed & confirmed.')
+    } else {
+      toast.warning('Marked as pending. Jab kaam mukammal ho jaye to "Yes" dabayein.')
+    }
+  }
+
+  const monthlyAudit = {
+    storeConfirmed: !!settings.monthlyAuditStoreConfirmed,
+    accountsConfirmed: !!settings.monthlyAuditAccountsConfirmed,
+    opsConfirmed: !!settings.monthlyAuditOpsConfirmed,
+    allDone: !!(settings.monthlyAuditStoreConfirmed && settings.monthlyAuditAccountsConfirmed && settings.monthlyAuditOpsConfirmed),
+  }
+
+  const confirmMonthlyAudit = () => {
+    const role = currentUser?.role
+    let updates: Partial<SystemSettings> = {}
+
+    if (role === 'store' || role === 'inventory_editor') {
+      updates.monthlyAuditStoreConfirmed = true
+    } else if (role === 'accounts') {
+      updates.monthlyAuditAccountsConfirmed = true
+    } else if (role === 'operations') {
+      updates.monthlyAuditOpsConfirmed = true
+    } else if (isAdmin) {
+      updates.monthlyAuditStoreConfirmed = true
+      updates.monthlyAuditAccountsConfirmed = true
+      updates.monthlyAuditOpsConfirmed = true
+    }
+
+    setSettings((prev) => ({ ...prev, ...updates }))
+    addAuditLog('MONTHLY_AUDIT', 'Audit', `Monthly audit confirmed by ${currentUser?.name} (${role})`)
+    toast.success('Monthly stock audit marked as confirmed.')
+  }
+
+  // Users Management
   const createUser = (data: Omit<User, 'id' | 'createdAt' | 'status'>) => {
     if (!isAdmin) return
     const defaultPerms = ROLE_DEFAULT_PERMISSIONS[data.role] || ROLE_DEFAULT_PERMISSIONS.viewer
@@ -574,6 +940,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         backups,
         auditLogs,
         settings,
+        resetRequests,
         canAddEditProducts,
         canDeleteProducts,
         canAdjustStock,
@@ -583,18 +950,33 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         canManageSettings,
         canManageUsers,
         isAdmin,
+        isStore,
         login,
         logout,
         switchRole,
         changeUserPassword,
+        requestPasswordReset,
+        resolvePasswordReset,
+        forceLogoutUser,
         addProduct,
         updateProduct,
         deleteProduct,
+        deleteAllInventory,
         adjustStock,
+        recordMovement,
+        deleteTransaction,
         bulkImportProducts,
+        updatePhysicalCount,
+        importShopifyStock,
+        importQuickBooksStock,
         createBackup,
+        createCategorizedBackup,
         restoreBackup,
         deleteBackup,
+        dailyCheckin,
+        respondDailyCheckin,
+        monthlyAudit,
+        confirmMonthlyAudit,
         createUser,
         updateUser,
         updateUserPermissions,
@@ -615,3 +997,4 @@ export function useInventory() {
   if (!context) throw new Error('useInventory must be used within InventoryProvider')
   return context
 }
+

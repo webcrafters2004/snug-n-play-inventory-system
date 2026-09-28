@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Package,
   ArrowLeftRight,
+  FileSpreadsheet,
   HardDriveDownload,
   Users2,
   Settings,
@@ -40,6 +41,11 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
       id: 'stock',
       label: 'Stock Movements',
       icon: ArrowLeftRight,
+    },
+    {
+      id: 'reports',
+      label: 'Reports & Audits',
+      icon: FileSpreadsheet,
     },
     {
       id: 'backup',

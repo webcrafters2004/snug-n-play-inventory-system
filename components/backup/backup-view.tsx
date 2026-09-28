@@ -16,8 +16,16 @@ import {
 } from 'lucide-react'
 
 export function BackupView() {
-  const { backups, createBackup, restoreBackup, deleteBackup, settings, updateSettings, currentUser } =
-    useInventory()
+  const {
+    backups,
+    createBackup,
+    createCategorizedBackup,
+    restoreBackup,
+    deleteBackup,
+    settings,
+    updateSettings,
+    currentUser,
+  } = useInventory()
 
   const restoreFileRef = useRef<HTMLInputElement>(null)
 
