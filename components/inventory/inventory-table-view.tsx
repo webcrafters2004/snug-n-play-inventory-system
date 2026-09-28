@@ -50,6 +50,7 @@ export function InventoryTableView() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
   const [resetConfirmText, setResetConfirmText] = useState('')
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string; sku: string } | null>(null)
 
   const filteredProducts = products.filter((p) => {
     const matchesSearch =
@@ -208,22 +209,23 @@ export function InventoryTableView() {
         </div>
       </div>
 
-      {/* Strictly 4 Columns Table: SKU | Product Name | Status | Action */}
+      {/* Products & Stock Table: Photo | SKU | Product Name | Status | Action */}
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
               <tr>
-                <th className="py-3.5 px-5 w-48">SKU</th>
-                <th className="py-3.5 px-5">Product Name</th>
-                <th className="py-3.5 px-5 text-center w-36">Status</th>
-                <th className="py-3.5 px-5 text-right w-28">Action</th>
+                <th className="py-3.5 px-4 text-center w-16">Photo</th>
+                <th className="py-3.5 px-4 w-44">SKU</th>
+                <th className="py-3.5 px-4">Product Name & Location</th>
+                <th className="py-3.5 px-4 text-center w-36">Status</th>
+                <th className="py-3.5 px-4 text-right w-28">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-12 text-center text-slate-400 text-xs">
+                  <td colSpan={5} className="p-12 text-center text-slate-400 text-xs">
                     No products found matching your search filters.
                   </td>
                 </tr>
@@ -233,13 +235,37 @@ export function InventoryTableView() {
                     key={p.id}
                     className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    {/* 1. SKU */}
-                    <td className="py-3.5 px-5 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap text-xs">
+                    {/* 1. Photo */}
+                    <td className="py-2.5 px-4 text-center">
+                      <div
+                        onClick={() => p.imageUrl && setPreviewImage({ url: p.imageUrl, name: p.name, sku: p.sku })}
+                        className={`w-12 h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden mx-auto shadow-xs ${
+                          p.imageUrl ? 'cursor-pointer hover:scale-105 hover:ring-2 hover:ring-indigo-500 transition-all' : ''
+                        }`}
+                        title={p.imageUrl ? 'Click to preview photo' : 'No photo uploaded'}
+                      >
+                        {p.imageUrl ? (
+                          <img
+                            src={p.imageUrl}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                        ) : (
+                          <Package className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                        )}
+                      </div>
+                    </td>
+
+                    {/* 2. SKU */}
+                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap text-xs">
                       {p.sku}
                     </td>
 
-                    {/* 2. Product Name */}
-                    <td className="py-3.5 px-5">
+                    {/* 3. Product Name */}
+                    <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-slate-900 dark:text-white block text-xs" title={p.name}>
                           {p.name}
@@ -260,13 +286,13 @@ export function InventoryTableView() {
                       </div>
                     </td>
 
-                    {/* 3. Status */}
-                    <td className="py-3.5 px-5 text-center whitespace-nowrap">
+                    {/* 4. Status */}
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
                       {statusBadge(p.status)}
                     </td>
 
-                    {/* 4. Action */}
-                    <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                    {/* 5. Action */}
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         {canAddEditProducts && (
                           <button
@@ -376,6 +402,42 @@ export function InventoryTableView() {
               className="bg-rose-600 hover:bg-rose-500 text-white text-xs h-9 font-bold rounded-xl shadow-xs"
             >
               Confirm Full Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Image Lightbox Modal */}
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-md bg-card text-card-foreground border-border rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold text-foreground">
+              {previewImage?.name}
+            </DialogTitle>
+            <DialogDescription className="text-xs font-mono text-indigo-600 dark:text-indigo-400">
+              SKU: {previewImage?.sku}
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewImage && (
+            <div className="mt-2 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 aspect-square bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPreviewImage(null)}
+              className="w-full text-xs h-9 rounded-xl font-semibold"
+            >
+              Close Preview
             </Button>
           </DialogFooter>
         </DialogContent>
