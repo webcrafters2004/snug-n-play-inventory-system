@@ -161,3 +161,108 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Snug N Play Reference Site UI Tokens */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--card);
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  border-top: 3.5px solid #5C8DE8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 12px 24px rgba(0, 0, 0, 0.06);
+}
+
+.stat-card.info {
+  border-top-color: #5C8DE8;
+}
+
+.stat-card.good {
+  border-top-color: #2FA98C;
+}
+
+.stat-card.alert {
+  border-top-color: #E8A33D;
+}
+
+.stat-card.bad {
+  border-top-color: #D9695F;
+}
+
+.stat-card.purple {
+  border-top-color: #8E6FD8;
+}
+
+.stat-card .label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.stat-card .value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--foreground);
+}
+
+.stat-card.info .value {
+  color: #3b82f6;
+}
+
+.stat-card.good .value {
+  color: #10b981;
+}
+
+.stat-card.alert .value {
+  color: #f59e0b;
+}
+
+.stat-card.bad .value {
+  color: #ef4444;
+}
+
+.stat-card.purple .value {
+  color: #8b5cf6;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+

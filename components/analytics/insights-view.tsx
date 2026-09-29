@@ -28,9 +28,9 @@ export function InsightsView({ onNavigate }: { onNavigate: (tab: string) => void
   const fastMovers = [...products].sort((a, b) => a.quantity - b.quantity).slice(0, 4)
   const overstocked = [...products].filter((p) => p.quantity > p.minStock * 2).slice(0, 4)
 
-  const categoryQtyData = Array.from(new Set(products.map((p) => p.category))).map((cat) => ({
-    name: cat.split(' ')[0],
-    Quantity: products.filter((p) => p.category === cat).reduce((sum, p) => sum + p.quantity, 0),
+  const locationQtyData = Array.from(new Set(products.map((p) => p.location || p.warehouse || 'Store'))).map((loc) => ({
+    name: loc,
+    Quantity: products.filter((p) => (p.location || p.warehouse || 'Store') === loc).reduce((sum, p) => sum + p.quantity, 0),
   }))
 
   const totalUnits = products.reduce((sum, p) => sum + p.quantity, 0)
@@ -99,16 +99,16 @@ export function InsightsView({ onNavigate }: { onNavigate: (tab: string) => void
         <CardHeader className="p-5 pb-2">
           <CardTitle className="text-sm font-bold flex items-center gap-2">
             <Boxes className="w-4 h-4 text-indigo-600" />
-            Total Units by Category
+            Total Units by Location
           </CardTitle>
           <CardDescription className="text-xs">
-            Physical stock allocation across main inventory product lines.
+            Physical stock allocation across Karachi warehouse locations.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-5 pt-2">
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryQtyData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+              <BarChart data={locationQtyData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />

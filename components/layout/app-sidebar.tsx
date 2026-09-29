@@ -77,25 +77,32 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
 
   return (
     <aside className="w-64 h-screen flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 select-none shadow-xs">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-        <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700 shadow-xs flex items-center justify-center">
-          <img
-            src="/logo.webp"
-            alt="Snug N Play"
-            className="h-7 w-auto object-contain"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-        </div>
-        <div>
-          <span className="font-bold text-sm text-slate-900 dark:text-white block tracking-tight">
-            Snug N Play
-          </span>
-          <span className="text-[11px] font-medium text-slate-400 block">
-            Inventory System
-          </span>
+      {/* Brand Header (Matching reference site) */}
+      <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700 shadow-xs flex items-center justify-center shrink-0">
+            <img
+              src="/logo.webp"
+              alt="Snug N Play"
+              className="h-7 w-auto object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
+                Snug N' Play
+              </span>
+              <span className="text-[10px] text-slate-500 font-medium px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800">
+                SMC-Pvt Ltd
+              </span>
+            </div>
+            <span className="text-[10px] font-medium text-slate-400 block truncate mt-0.5">
+              Site: Karachi Warehouse
+            </span>
+          </div>
         </div>
       </div>
 
@@ -163,13 +170,22 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
           </div>
         </div>
 
-        <button
-          onClick={logout}
-          className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          Sign Out
-        </button>
+        <div className="grid grid-cols-2 gap-1.5 mt-2">
+          <button
+            onClick={() => handleNavClick('profile')}
+            className="flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-slate-200/60 dark:border-slate-700"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            Profile
+          </button>
+          <button
+            onClick={logout}
+            className="flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors border border-slate-200/60 dark:border-slate-700"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Sign Out
+          </button>
+        </div>
       </div>
     </aside>
   )

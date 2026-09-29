@@ -29,7 +29,7 @@ export function StockOperationsView() {
   const [selectedProductId, setSelectedProductId] = useState(products[0]?.id || '')
   const [opType, setOpType] = useState<TransactionType>('stock_in')
   const [qty, setQty] = useState(10)
-  const [reason, setReason] = useState('Supplier shipment received')
+  const [reason, setReason] = useState('Stock received into warehouse')
   const [orderReference, setOrderReference] = useState('')
   const [attachmentUrl, setAttachmentUrl] = useState('')
   const [fromLocation, setFromLocation] = useState<string>('Store')
@@ -138,7 +138,7 @@ export function StockOperationsView() {
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Record supplier stock in, outgoing parcel dispatches (with Order #), damaged stock, returns, and warehouse transfers.
+            Record stock in, outgoing parcel dispatches (with Order #), damaged stock, returns, and warehouse transfers.
           </p>
         </div>
 
@@ -174,7 +174,7 @@ export function StockOperationsView() {
                 disabled={!canAdjustStock}
                 onClick={() => {
                   setOpType('stock_in')
-                  setReason('Supplier shipment received')
+                  setReason('Stock received into warehouse')
                 }}
                 className={`p-3 rounded-2xl border text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all ${
                   opType === 'stock_in'

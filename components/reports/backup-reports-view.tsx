@@ -448,7 +448,7 @@ export function BackupReportsView() {
                 <thead className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
                   <tr>
                     <th className="py-3 px-4">Backup Name</th>
-                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">Backup Scope</th>
                     <th className="py-3 px-4 text-center">Type</th>
                     <th className="py-3 px-4 text-center">Format</th>
                     <th className="py-3 px-4 text-center">Records</th>
@@ -552,13 +552,13 @@ export function BackupReportsView() {
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate" title={selectedProduct.name}>
                         {selectedProduct.name}
                       </h4>
-                      <p className="text-[11px] text-slate-400">{selectedProduct.category}</p>
+                      <p className="text-[11px] text-slate-400">Total Stock: {selectedProduct.quantity} units</p>
                       <div className="flex items-center gap-2 pt-1">
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
                           {selectedProduct.location || 'Store'}
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                          {selectedProduct.brand}
+                          {selectedProduct.status.toUpperCase().replace('_', ' ')}
                         </span>
                       </div>
                     </div>

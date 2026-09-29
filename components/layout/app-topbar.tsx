@@ -71,7 +71,7 @@ export function AppTopbar({ activeTab, onToggleMobileMenu }: AppTopbarProps) {
 
   const roleLabels: Record<UserRole, { label: string; badgeClass: string }> = {
     system_admin: { label: 'System Admin', badgeClass: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' },
-    store: { label: 'Store (Rehmat)', badgeClass: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' },
+    store: { label: 'Store Keeper', badgeClass: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' },
     inventory_editor: { label: 'Inventory Editor', badgeClass: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800' },
     operations: { label: 'Operations', badgeClass: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
     accounts: { label: 'Accounts', badgeClass: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' },

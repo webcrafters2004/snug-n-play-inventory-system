@@ -23,25 +23,11 @@ interface ProductModalProps {
   product?: Product | null
 }
 
-const CATEGORIES = [
-  'Soft Play Equipment',
-  'Ball Pits & Playsets',
-  'Play Mats & Rugs',
-  'Wooden & Montessori Toys',
-  'Plush & Sensory Toys',
-  'Ride-On & Active Play',
-  'Educational & Puzzles',
-  'Baby Care & Nursery',
-]
-
 export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
   const { addProduct, updateProduct, canAddEditProducts } = useInventory()
 
   const [sku, setSku] = useState('')
   const [name, setName] = useState('')
-  const [category, setCategory] = useState(CATEGORIES[0])
-  const [brand, setBrand] = useState('Snug N Play Original')
-  const [supplier, setSupplier] = useState('PlaySafe Foam Ltd')
   const [location, setLocation] = useState<string>('Store')
   const [quantity, setQuantity] = useState(10)
   const [minStock, setMinStock] = useState(5)
@@ -92,9 +78,6 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
     if (product) {
       setSku(product.sku)
       setName(product.name)
-      setCategory(product.category)
-      setBrand(product.brand)
-      setSupplier(product.supplier)
       setLocation(product.location || product.warehouse || 'Store')
       setQuantity(product.quantity)
       setMinStock(product.minStock || 5)
@@ -105,9 +88,6 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
     } else {
       setSku(`SNP-${Math.floor(1000 + Math.random() * 9000)}`)
       setName('')
-      setCategory(CATEGORIES[0])
-      setBrand('Snug N Play Original')
-      setSupplier('PlaySafe Foam Ltd')
       setLocation('Store')
       setQuantity(20)
       setMinStock(5)
@@ -126,9 +106,9 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
       updateProduct(product.id, {
         sku,
         name,
-        category,
-        brand,
-        supplier,
+        category: product.category || 'General',
+        brand: product.brand || '',
+        supplier: product.supplier || '',
         location,
         warehouse: location,
         quantity,
@@ -143,9 +123,9 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
       addProduct({
         sku,
         name,
-        category,
-        brand,
-        supplier,
+        category: 'General',
+        brand: '',
+        supplier: '',
         location,
         warehouse: location,
         quantity,
@@ -176,7 +156,7 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">SKU / Item Code *</Label>
               <Input
@@ -188,34 +168,6 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
               />
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Category</Label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full h-9 text-xs px-2.5 rounded-xl border border-input bg-background text-foreground font-medium"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs font-semibold">Product Title / Name *</Label>
-            <Input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Pastel Modular Soft Play Climb & Crawl Set"
-              className="h-9 text-xs rounded-xl"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold flex items-center gap-1">
                 <Building2 className="w-3.5 h-3.5 text-indigo-500" />
@@ -233,6 +185,19 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2 space-y-1">
+              <Label className="text-xs font-semibold">Product Title / Name *</Label>
+              <Input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Modular Soft Play Climb & Crawl Set"
+                className="h-9 text-xs rounded-xl"
+              />
+            </div>
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Item Status</Label>
@@ -245,18 +210,6 @@ export function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
                 <option value="Hold">Hold / Inspection</option>
                 <option value="Inactive">Inactive</option>
               </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Brand</Label>
-              <Input value={brand} onChange={(e) => setBrand(e.target.value)} className="h-9 text-xs rounded-xl" />
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Supplier</Label>
-              <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} className="h-9 text-xs rounded-xl" />
             </div>
           </div>
 

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useInventory } from '@/context/inventory-context'
-import { Product, ProductStatus } from '@/lib/types'
+import { Product, ProductStatus, WAREHOUSE_LOCATIONS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -15,6 +15,7 @@ import {
   Edit2,
   Trash2,
   Eye,
+  Building2,
 } from 'lucide-react'
 import { exportProductsToExcel, downloadSampleTemplate } from '@/lib/excel-helper'
 import { ExcelImportModal } from './excel-import-modal'
@@ -43,6 +44,7 @@ export function InventoryTableView() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
+  const [selectedLocation, setSelectedLocation] = useState<string>('ALL')
 
   // Modals
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -58,8 +60,10 @@ export function InventoryTableView() {
       p.sku.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = selectedStatus === 'ALL' || p.status === selectedStatus
+    const matchesLocation =
+      selectedLocation === 'ALL' || (p.location || p.warehouse || 'Store') === selectedLocation
 
-    return matchesSearch && matchesStatus
+    return matchesSearch && matchesStatus && matchesLocation
   })
 
   const totalUnits = filteredProducts.reduce((sum, p) => sum + p.quantity, 0)
@@ -182,25 +186,40 @@ export function InventoryTableView() {
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
+      {/* Search & Filter Bar (Matching reference site) */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-        <div className="sm:col-span-8 relative">
+        <div className="sm:col-span-6 relative">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by SKU or Product Name..."
+            placeholder="Search SKU or product name..."
             className="pl-10 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
           />
         </div>
 
-        <div className="sm:col-span-4">
+        <div className="sm:col-span-3">
+          <select
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+            className="w-full h-10 text-xs px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-300"
+          >
+            <option value="ALL">All Locations</option>
+            {WAREHOUSE_LOCATIONS.map((loc) => (
+              <option key={loc} value={loc}>
+                {loc}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="sm:col-span-3">
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
             className="w-full h-10 text-xs px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-medium text-slate-700 dark:text-slate-300"
           >
-            <option value="ALL">Status: All Items</option>
+            <option value="ALL">All Status</option>
             <option value="in_stock">In Stock</option>
             <option value="low_stock">Low Stock</option>
             <option value="out_of_stock">Out of Stock</option>
@@ -209,23 +228,25 @@ export function InventoryTableView() {
         </div>
       </div>
 
-      {/* Products & Stock Table: Photo | SKU | Product Name | Status | Action */}
+      {/* Products & Stock Table: Photo | SKU | Product Name | Location | Units on Hand | Status | Action */}
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
               <tr>
                 <th className="py-3.5 px-4 text-center w-16">Photo</th>
-                <th className="py-3.5 px-4 w-44">SKU</th>
-                <th className="py-3.5 px-4">Product Name & Location</th>
-                <th className="py-3.5 px-4 text-center w-36">Status</th>
-                <th className="py-3.5 px-4 text-right w-28">Action</th>
+                <th className="py-3.5 px-4 w-40">SKU</th>
+                <th className="py-3.5 px-4">Product Name</th>
+                <th className="py-3.5 px-4 w-36">Location</th>
+                <th className="py-3.5 px-4 w-32 font-mono">Stock Units</th>
+                <th className="py-3.5 px-4 text-center w-32">Status</th>
+                <th className="py-3.5 px-4 text-right w-24">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-slate-400 text-xs">
+                  <td colSpan={7} className="p-12 text-center text-slate-400 text-xs">
                     No products found matching your search filters.
                   </td>
                 </tr>
@@ -276,17 +297,22 @@ export function InventoryTableView() {
                           </span>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[11px] text-slate-400 font-medium">
-                          {p.quantity.toLocaleString()} Units on hand
-                        </span>
-                        <span className="text-[10px] px-2 py-0.2 rounded-full font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                          {p.location || 'Store'}
-                        </span>
-                      </div>
                     </td>
 
-                    {/* 4. Status */}
+                    {/* 4. Location */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+                        <Building2 className="w-3 h-3 text-indigo-500" />
+                        {p.location || p.warehouse || 'Store'}
+                      </span>
+                    </td>
+
+                    {/* 5. Units on Hand */}
+                    <td className="py-3.5 px-4 font-mono font-bold text-sm text-slate-900 dark:text-white whitespace-nowrap">
+                      {p.quantity.toLocaleString()}
+                    </td>
+
+                    {/* 6. Status */}
                     <td className="py-3.5 px-4 text-center whitespace-nowrap">
                       {statusBadge(p.status)}
                     </td>

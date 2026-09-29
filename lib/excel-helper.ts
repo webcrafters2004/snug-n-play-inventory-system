@@ -5,9 +5,6 @@ export function exportProductsToExcel(products: Product[], filename = 'SnugNPlay
   const rows = products.map((p) => ({
     SKU: p.sku,
     'Product Name': p.name,
-    Category: p.category,
-    Brand: p.brand,
-    Supplier: p.supplier,
     Location: p.location || p.warehouse,
     Quantity: p.quantity,
     'Min Stock': p.minStock,
@@ -46,7 +43,6 @@ export function exportDamageReport(products: Product[], transactions: Transactio
       return {
         SKU: p.sku,
         'Product Name': p.name,
-        Category: p.category,
         Location: p.location || p.warehouse,
         'Damaged Units': p.totalDamaged || 0,
         'Current Good Stock': p.quantity,
@@ -130,7 +126,6 @@ export function downloadSampleTemplate(filename = 'SnugNPlay_Sample_Inventory_Te
       'Product Photo': 'SNP-SP-001.jpg',
       SKU: 'SNP-SP-001',
       'Product Name': 'Pastel Modular Soft Play Climb & Crawl Set (5-Piece)',
-      Category: 'Soft Play Equipment',
       Location: 'Store',
       Quantity: 42,
       'Min Stock': 10,
@@ -141,7 +136,6 @@ export function downloadSampleTemplate(filename = 'SnugNPlay_Sample_Inventory_Te
       'Product Photo': 'SNP-BP-002.jpg',
       SKU: 'SNP-BP-002',
       'Product Name': 'Luxury Velvet Ball Pit with 200 Pearl Balls',
-      Category: 'Ball Pits & Playsets',
       Location: 'Shed',
       Quantity: 18,
       'Min Stock': 10,

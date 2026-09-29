@@ -111,7 +111,7 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
             </Button>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Upload an Excel sheet containing product SKUs and physical stock levels. Columns: SKU, Product Name, Category, Brand, Supplier, Warehouse, Quantity, Min Stock, Max Stock, Notes.
+            Upload an Excel sheet containing product SKUs and physical stock levels. Columns: SKU, Product Name, Location, Quantity, Min Stock, Notes.
           </DialogDescription>
         </DialogHeader>
 
@@ -194,8 +194,7 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
                         <tr>
                           <th className="p-2 font-semibold">SKU</th>
                           <th className="p-2 font-semibold">Product Name</th>
-                          <th className="p-2 font-semibold">Category</th>
-                          <th className="p-2 font-semibold">Warehouse</th>
+                          <th className="p-2 font-semibold">Warehouse Location</th>
                           <th className="p-2 font-semibold text-right">Quantity</th>
                         </tr>
                       </thead>
@@ -203,9 +202,8 @@ export function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
                         {parsedData.slice(0, 5).map((row, idx) => (
                           <tr key={idx} className="hover:bg-muted/30">
                             <td className="p-2 font-mono font-medium text-indigo-600 dark:text-indigo-400">{row.sku}</td>
-                            <td className="p-2 font-medium truncate max-w-[180px]">{row.name}</td>
-                            <td className="p-2 text-muted-foreground">{row.category}</td>
-                            <td className="p-2 text-muted-foreground">{row.warehouse || 'Main Hub'}</td>
+                            <td className="p-2 font-medium truncate max-w-[200px]">{row.name}</td>
+                            <td className="p-2 text-muted-foreground">{row.warehouse || 'Store'}</td>
                             <td className="p-2 text-right font-bold text-foreground">{row.quantity} Units</td>
                           </tr>
                         ))}
