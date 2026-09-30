@@ -5,12 +5,13 @@ export function exportProductsToExcel(products: Product[], filename = 'SnugNPlay
   const rows = products.map((p) => ({
     SKU: p.sku,
     'Product Name': p.name,
-    Location: p.location || p.warehouse,
-    Quantity: p.quantity,
-    'Min Stock': p.minStock,
-    'Max Stock': p.maxStock,
+    'Physical Stock': p.quantity,
+    Location: p.location || p.warehouse || 'Store',
+    'Product Photo URL': p.imageUrl || '',
     'Total Damaged': p.totalDamaged || 0,
     Status: p.status.toUpperCase().replace('_', ' '),
+    'Min Alert Stock': p.minStock,
+    'Max Stock': p.maxStock,
     'Item State': p.itemStatus || 'Active',
     Notes: p.notes || '',
     'Last Updated': p.updatedAt,
@@ -252,21 +253,104 @@ export async function parseExcelFile(file: File): Promise<{
         const errors: string[] = []
         const parsedProducts: Partial<Product>[] = []
 
+        let lastSeenTitle = ''
+
         rawJson.forEach((row, idx) => {
           const rowNum = idx + 2
-          const sku = String(row.SKU || row.sku || row['Product SKU'] || '').trim()
-          const name = String(row['Product Name'] || row.Name || row.name || row.title || '').trim()
-          const category = String(row.Category || row.category || 'General').trim()
-          const brand = String(row.Brand || row.brand || 'Snug N Play').trim()
+
+          // 1. SKU Detection (supports standard, internal, and Shopify Variant SKU)
+          const sku = String(
+            row['Variant SKU'] ||
+            row.SKU ||
+            row.sku ||
+            row['Product SKU'] ||
+            row['Item Code'] ||
+            row['Item SKU'] ||
+            ''
+          ).trim()
+
+          // 2. Product Name / Title Detection (supports standard and Shopify Title with variant fill-down)
+          let rawTitle = String(
+            row['Product Name'] ||
+            row.Title ||
+            row.title ||
+            row.Name ||
+            row.name ||
+            row.Handle ||
+            row.handle ||
+            ''
+          ).trim()
+
+          if (rawTitle) {
+            lastSeenTitle = rawTitle
+          } else if (lastSeenTitle) {
+            rawTitle = lastSeenTitle
+          }
+
+          // Check for Variant Options (e.g. Color, Size from Shopify)
+          const option1Val = String(row['Option1 Value'] || '').trim()
+          const option2Val = String(row['Option2 Value'] || '').trim()
+          const option3Val = String(row['Option3 Value'] || '').trim()
+
+          const optionsList = [option1Val, option2Val, option3Val].filter(
+            (opt) => opt && opt.toLowerCase() !== 'default title'
+          )
+
+          let name = rawTitle
+          if (optionsList.length > 0 && !name.toLowerCase().includes(option1Val.toLowerCase())) {
+            name = `${rawTitle} (${optionsList.join(' / ')})`
+          }
+
+          // 3. Category, Brand, Supplier, Warehouse defaults
+          const category = String(row['Product Category'] || row.Category || row.category || 'General').trim()
+          const brand = String(row.Vendor || row.Brand || row.brand || 'Snug N Play').trim()
           const supplier = String(row.Supplier || row.supplier || 'Standard Supplier').trim()
           const warehouse = String(row.Warehouse || row.warehouse || 'Main Hub - Karachi').trim()
-          const quantity = parseInt(String(row.Quantity || row.quantity || row.Qty || row.qty || '0'), 10) || 0
-          const minStock = parseInt(String(row['Min Stock'] || row.minStock || row.Min || '10'), 10) || 10
-          const maxStock = parseInt(String(row['Max Stock'] || row.maxStock || row.Max || '100'), 10) || 100
-          const notes = String(row.Notes || row.notes || '').trim()
 
+          // 4. Quantity Detection (supports standard and Shopify Variant Inventory Qty)
+          const rawQty =
+            row['Variant Inventory Qty'] ||
+            row['Inventory Available: Karachi'] ||
+            row['Inventory Available: Main Store'] ||
+            row.Quantity ||
+            row.quantity ||
+            row['Physical Stock'] ||
+            row.Qty ||
+            row.qty ||
+            row['Quantity On Hand'] ||
+            '0'
+          const quantity = parseInt(String(rawQty), 10) || 0
+
+          const minStock = parseInt(String(row['Min Alert Stock'] || row['Min Stock'] || row.minStock || row.Min || '5'), 10) || 5
+          const maxStock = parseInt(String(row['Max Stock'] || row.maxStock || row.Max || '100'), 10) || 100
+
+          // 5. Notes / Details / Options (strip HTML if Body (HTML) from Shopify)
+          let notes = String(row.Notes || row.notes || row['Body (HTML)'] || '').trim()
+          if (notes.includes('<') && notes.includes('>')) {
+            notes = notes.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim()
+          }
+          if (optionsList.length > 0) {
+            const optDetails: string[] = []
+            if (row['Option1 Name'] && option1Val) optDetails.push(`${row['Option1 Name']}: ${option1Val}`)
+            if (row['Option2 Name'] && option2Val) optDetails.push(`${row['Option2 Name']}: ${option2Val}`)
+            if (optDetails.length > 0) {
+              const optStr = optDetails.join(' | ')
+              notes = notes ? `${optStr} — ${notes}` : optStr
+            }
+          }
+
+          // 6. Location and Image Detection (supports Image Src and Variant Image from Shopify)
           const location = String(row.Location || row.location || row.Warehouse || row.warehouse || 'Store').trim()
-          const imageUrl = String(row['Product Photo'] || row.Image || row.imageUrl || '').trim() || undefined
+          const imageUrl = String(
+            row['Image Src'] ||
+            row['Variant Image'] ||
+            row['Product Photo URL'] ||
+            row['Product Photo'] ||
+            row.Image ||
+            row.imageUrl ||
+            row.photo ||
+            ''
+          ).trim() || undefined
           const totalDamaged = parseInt(String(row['Total Damaged'] || row.Damaged || row.damaged || '0'), 10) || 0
 
           if (!sku) {
