@@ -101,7 +101,6 @@ export function exportShopify3WayAuditReport(products: Product[], filename?: str
     return {
       SKU: p.sku,
       'Product Name': p.name,
-      Category: p.category,
       Location: p.location || p.warehouse,
       'System Stock': p.quantity,
       'Physical Count': p.physicalStock !== undefined ? p.physicalStock : 'Pending Count',
@@ -118,6 +117,34 @@ export function exportShopify3WayAuditReport(products: Product[], filename?: str
   XLSX.utils.book_append_sheet(workbook, worksheet, '3Way_Reconciliation')
   XLSX.writeFile(workbook, targetFilename)
 }
+
+// 4. Stock Movement Ledger & Audit Trail Report (XLS)
+export function exportStockMovementsReport(transactions: Transaction[], filename?: string) {
+  const dateStr = new Date().toISOString().split('T')[0]
+  const targetFilename = filename || `SnugNPlay_Stock_Movements_${dateStr}.xlsx`
+
+  const rows = transactions.map((t) => ({
+    'Transaction ID': t.id,
+    Date: t.date,
+    SKU: t.sku,
+    'Product Name': t.productName,
+    'Movement Type': t.type.toUpperCase().replace('_', ' '),
+    Quantity: t.quantity,
+    'Previous Stock': t.previousQuantity,
+    'New Stock': t.newQuantity,
+    'Order # / Reference': t.orderReference || t.reference || 'N/A',
+    Location: t.fromLocation || 'Store',
+    'To Location': t.toLocation || '',
+    'Logged By': t.userName,
+    Reason: t.reason || '',
+  }))
+
+  const worksheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Note: 'No stock movements found for the selected period.' }])
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Stock_Movements')
+  XLSX.writeFile(workbook, targetFilename)
+}
+
 
 // 4. Download Sample Templates
 export function downloadSampleTemplate(filename = 'SnugNPlay_Sample_Inventory_Template.xlsx') {

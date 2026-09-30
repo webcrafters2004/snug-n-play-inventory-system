@@ -20,8 +20,11 @@ import {
   Download,
   Building2,
   Link as LinkIcon,
+  Calendar,
+  X,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { isDateInRange } from '@/lib/date-filter'
 
 export function StockOperationsView() {
   const { products, transactions, recordMovement, deleteTransaction, canAdjustStock } = useInventory()
@@ -36,6 +39,8 @@ export function StockOperationsView() {
   const [toLocation, setToLocation] = useState<string>('Shed')
   const [adjustDirection, setAdjustDirection] = useState<'increase' | 'decrease'>('increase')
   const [searchTerm, setSearchTerm] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
 
   const selectedProduct = products.find((p) => p.id === selectedProductId)
 
@@ -78,12 +83,15 @@ export function StockOperationsView() {
   }
 
   const filteredTx = transactions.filter((tx) => {
-    return (
+    const matchesSearch =
       tx.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tx.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tx.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (tx.orderReference && tx.orderReference.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
+
+    const matchesDate = isDateInRange(tx.date, fromDate, toDate)
+
+    return matchesSearch && matchesDate
   })
 
   const exportLedgerToExcel = () => {
@@ -475,7 +483,7 @@ export function StockOperationsView() {
 
       {/* Movement Ledger Table with Reversal Action */}
       <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <History className="w-4 h-4 text-slate-400" />
@@ -485,14 +493,59 @@ export function StockOperationsView() {
               Complete transaction log with 1-click automatic stock reversal on deletion
             </p>
           </div>
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search SKU, Order #, note..."
-              className="pl-8 h-8 text-xs w-60 rounded-xl"
-            />
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Compact Search Bar */}
+            <div className="relative w-full sm:w-56">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search SKU, Order #..."
+                className="pl-8 h-8 text-xs rounded-xl bg-slate-50 dark:bg-slate-800"
+              />
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+              />
+              <span className="text-[10px]">to</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+              />
+            </div>
+
+            {(fromDate || toDate) && (
+              <button
+                onClick={() => {
+                  setFromDate('')
+                  setToDate('')
+                }}
+                className="inline-flex items-center gap-1 text-[11px] px-2 py-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg font-medium"
+              >
+                <X className="w-3 h-3" /> Clear
+              </button>
+            )}
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportLedgerToExcel}
+              className="text-xs h-8 px-2.5 rounded-lg border-slate-200 dark:border-slate-700"
+              title="Export filtered transactions to Excel"
+            >
+              <Download className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+              Export
+            </Button>
           </div>
         </div>
 

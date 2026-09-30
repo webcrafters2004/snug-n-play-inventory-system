@@ -12,11 +12,12 @@ import { BackupView } from '@/components/backup/backup-view'
 import { BackupReportsView } from '@/components/reports/backup-reports-view'
 import { UsersManagementView } from '@/components/users/users-management-view'
 import { ProfileSettingsView } from '@/components/profile/profile-settings-view'
+import { RestoreBackupModal } from '@/components/backup/restore-backup-modal'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function InventoryApp() {
-  const { currentUser } = useInventory()
+  const { currentUser, isRestoreModalOpen, setIsRestoreModalOpen } = useInventory()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
@@ -82,6 +83,12 @@ export function InventoryApp() {
             Super Admin: <strong className="font-mono text-foreground">amankamran2004@outlook.com</strong>
           </span>
         </footer>
+
+        {/* Global Restore Backup JSON Modal */}
+        <RestoreBackupModal
+          isOpen={isRestoreModalOpen}
+          onClose={() => setIsRestoreModalOpen(false)}
+        />
       </div>
     </div>
   )

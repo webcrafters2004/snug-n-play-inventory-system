@@ -13,7 +13,10 @@ import {
   Trash2,
   Database,
   CheckCircle2,
+  X,
+  UploadCloud,
 } from 'lucide-react'
+import { isDateInRange } from '@/lib/date-filter'
 
 export function BackupView() {
   const {
@@ -25,8 +28,11 @@ export function BackupView() {
     settings,
     updateSettings,
     currentUser,
+    setIsRestoreModalOpen,
   } = useInventory()
 
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const restoreFileRef = useRef<HTMLInputElement>(null)
 
   const handleRestoreFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +68,8 @@ export function BackupView() {
 
   const canManageBackups = currentUser?.role === 'system_admin'
 
+  const filteredBackups = backups.filter((b) => isDateInRange(b.createdAt, fromDate, toDate))
+
   return (
     <div className="space-y-6 pb-12">
       {/* Top Banner */}
@@ -76,14 +84,23 @@ export function BackupView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            size="sm"
+            onClick={() => setIsRestoreModalOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-sm gap-1.5"
+          >
+            <UploadCloud className="w-4 h-4" />
+            Restore Portal (.json)
+          </Button>
+
           <Button
             size="sm"
             onClick={() => createBackup('manual')}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md shadow-indigo-600/20"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs h-10 px-4 rounded-2xl shadow-md shadow-indigo-600/20 gap-1.5"
           >
-            <Download className="w-4 h-4 mr-1.5" />
-            Download Full Backup Now
+            <Download className="w-4 h-4" />
+            Download Full Backup (.json)
           </Button>
         </div>
       </div>
@@ -165,10 +182,35 @@ export function BackupView() {
 
       {/* Backup History Table */}
       <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-            Saved Backup Archives ({backups.length})
+            Saved Backup Archives ({filteredBackups.length})
           </h3>
+
+          <div className="flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+            />
+            <span className="text-[10px] text-slate-400">to</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+            />
+            {(fromDate || toDate) && (
+              <button
+                onClick={() => { setFromDate(''); setToDate('') }}
+                className="inline-flex items-center gap-1 text-[11px] px-2 py-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg font-medium"
+              >
+                <X className="w-3 h-3" /> Clear
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -184,7 +226,14 @@ export function BackupView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {backups.map((b) => (
+              {filteredBackups.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-400">
+                    No backup archives match the selected date filter.
+                  </td>
+                </tr>
+              ) : (
+                filteredBackups.map((b) => (
                 <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                   <td className="p-4 font-mono font-bold text-slate-900 dark:text-white">{b.name}</td>
                   <td className="p-4 text-center">
@@ -222,7 +271,8 @@ export function BackupView() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+            )}
             </tbody>
           </table>
         </div>

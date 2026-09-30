@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  UploadCloud,
 } from 'lucide-react'
 
 interface AppSidebarProps {
@@ -21,7 +22,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebarProps) {
-  const { currentUser, logout, products, isAdmin } = useInventory()
+  const { currentUser, logout, products, isAdmin, setIsRestoreModalOpen } = useInventory()
 
   const lowStockCount = products.filter((p) => p.status === 'low_stock' || p.status === 'out_of_stock').length
 
@@ -150,6 +151,26 @@ export function AppSidebar({ activeTab, onTabChange, onCloseMobile }: AppSidebar
             </button>
           )
         })}
+
+        {/* Restore Portal JSON Option */}
+        <div className="pt-2">
+          <button
+            onClick={() => {
+              setIsRestoreModalOpen(true)
+              if (onCloseMobile) onCloseMobile()
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-2xs"
+            title="Upload JSON backup file to restore full system"
+          >
+            <div className="flex items-center gap-2.5">
+              <UploadCloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Restore Backup</span>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-200/70 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold uppercase">
+              .JSON
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* User Footer */}

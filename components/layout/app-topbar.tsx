@@ -12,6 +12,7 @@ import {
   Layers,
   Calculator,
   DownloadCloud,
+  UploadCloud,
   Menu,
   Edit3,
   Eye,
@@ -35,7 +36,7 @@ interface AppTopbarProps {
 }
 
 export function AppTopbar({ activeTab, onToggleMobileMenu }: AppTopbarProps) {
-  const { currentUser, switchRole, createBackup } = useInventory()
+  const { currentUser, switchRole, createBackup, setIsRestoreModalOpen } = useInventory()
   const { theme, setTheme } = useTheme()
   const [liveTime, setLiveTime] = useState<string>('')
 
@@ -165,11 +166,23 @@ export function AppTopbar({ activeTab, onToggleMobileMenu }: AppTopbarProps) {
           variant="outline"
           size="sm"
           onClick={() => createBackup('manual')}
-          className="h-8 text-xs font-medium gap-1.5 hidden sm:flex border-border hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg"
-          title="Download snapshot backup"
+          className="h-8 text-xs font-semibold gap-1.5 hidden sm:flex border-border hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg shadow-2xs"
+          title="Download full JSON portal backup"
         >
           <DownloadCloud className="w-3.5 h-3.5 text-indigo-500" />
           Backup Now
+        </Button>
+
+        {/* Restore Backup JSON Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsRestoreModalOpen(true)}
+          className="h-8 text-xs font-semibold gap-1.5 hidden sm:flex border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg shadow-2xs"
+          title="Upload JSON backup to restore entire portal data"
+        >
+          <UploadCloud className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          Restore JSON
         </Button>
 
         {/* Theme Switcher Toggle */}

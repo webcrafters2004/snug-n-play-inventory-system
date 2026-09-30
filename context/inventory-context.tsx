@@ -79,6 +79,8 @@ interface InventoryContextType {
   createCategorizedBackup: (category: 'all' | 'damage' | 'parcels' | 'inventory' | 'shopify') => void
   restoreBackup: (jsonContent: string) => boolean
   deleteBackup: (id: string) => void
+  isRestoreModalOpen: boolean
+  setIsRestoreModalOpen: (open: boolean) => void
   // Workflow Check-ins & Reminders
   dailyCheckin: { status: 'pending' | 'completed'; dayLabel: string }
   respondDailyCheckin: (status: 'yes' | 'no') => void
@@ -119,6 +121,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS)
   const [settings, setSettings] = useState<SystemSettings>(INITIAL_SETTINGS)
   const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([])
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false)
 
   // Load state on mount
   useEffect(() => {
@@ -771,19 +774,62 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   }
 
   const restoreBackup = (jsonContent: string): boolean => {
-    if (!isAdmin) {
-      toast.error('Only System Admin can restore database snapshots.')
-      return false
-    }
     try {
       const parsed = JSON.parse(jsonContent)
-      if (parsed.products) setProducts(parsed.products)
-      if (parsed.users) setUsers(parsed.users)
-      if (parsed.transactions) setTransactions(parsed.transactions)
-      toast.success('Backup snapshot restored successfully!')
+      let restoredProducts = 0
+      let restoredTx = 0
+
+      // Support full dump or products array
+      const rawProducts = Array.isArray(parsed) ? parsed : (parsed.products || [])
+      if (Array.isArray(rawProducts) && rawProducts.length > 0) {
+        setProducts(rawProducts)
+        try {
+          localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(rawProducts))
+        } catch (err) {}
+        restoredProducts = rawProducts.length
+      }
+
+      if (parsed.transactions && Array.isArray(parsed.transactions)) {
+        setTransactions(parsed.transactions)
+        try {
+          localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(parsed.transactions))
+        } catch (err) {}
+        restoredTx = parsed.transactions.length
+      }
+
+      if (parsed.users && Array.isArray(parsed.users)) {
+        setUsers(parsed.users)
+        try {
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(parsed.users))
+        } catch (err) {}
+      }
+
+      if (parsed.auditLogs && Array.isArray(parsed.auditLogs)) {
+        setAuditLogs(parsed.auditLogs)
+        try {
+          localStorage.setItem(STORAGE_KEYS.AUDIT, JSON.stringify(parsed.auditLogs))
+        } catch (err) {}
+      }
+
+      if (parsed.settings && typeof parsed.settings === 'object') {
+        setSettings(parsed.settings)
+        try {
+          localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(parsed.settings))
+        } catch (err) {}
+      }
+
+      if (parsed.backups && Array.isArray(parsed.backups)) {
+        setBackups(parsed.backups)
+        try {
+          localStorage.setItem(STORAGE_KEYS.BACKUPS, JSON.stringify(parsed.backups))
+        } catch (err) {}
+      }
+
+      addAuditLog('SYSTEM_RESTORE', 'Backup', `Portal backup restored: ${restoredProducts} products, ${restoredTx} stock movements`)
+      toast.success(`🎉 Portal Data Restored! ${restoredProducts} products and ${restoredTx} movements loaded.`)
       return true
     } catch (e: any) {
-      toast.error('Invalid backup file.')
+      toast.error('Invalid backup JSON file.')
       return false
     }
   }
@@ -973,6 +1019,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         createCategorizedBackup,
         restoreBackup,
         deleteBackup,
+        isRestoreModalOpen,
+        setIsRestoreModalOpen,
         dailyCheckin,
         respondDailyCheckin,
         monthlyAudit,

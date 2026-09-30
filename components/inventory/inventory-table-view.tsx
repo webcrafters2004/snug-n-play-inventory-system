@@ -9,15 +9,16 @@ import {
   Package,
   Search,
   Plus,
-  FileSpreadsheet,
   Download,
   Upload,
   Edit2,
   Trash2,
   Eye,
-  Building2,
+  Calendar,
+  X,
 } from 'lucide-react'
-import { exportProductsToExcel, downloadSampleTemplate } from '@/lib/excel-helper'
+import { exportProductsToExcel } from '@/lib/excel-helper'
+import { isDateInRange } from '@/lib/date-filter'
 import { ExcelImportModal } from './excel-import-modal'
 import { ProductModal } from './product-modal'
 import {
@@ -28,14 +29,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { AlertTriangle } from 'lucide-react'
 
 export function InventoryTableView() {
   const {
     products,
     deleteProduct,
-    deleteAllInventory,
-    isAdmin,
     canAddEditProducts,
     canDeleteProducts,
     canImportExcel,
@@ -45,13 +43,13 @@ export function InventoryTableView() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [selectedLocation, setSelectedLocation] = useState<string>('ALL')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
 
   // Modals
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
-  const [resetConfirmText, setResetConfirmText] = useState('')
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string; sku: string } | null>(null)
 
   const filteredProducts = products.filter((p) => {
@@ -63,7 +61,9 @@ export function InventoryTableView() {
     const matchesLocation =
       selectedLocation === 'ALL' || (p.location || p.warehouse || 'Store') === selectedLocation
 
-    return matchesSearch && matchesStatus && matchesLocation
+    const matchesDate = isDateInRange(p.updatedAt, fromDate, toDate)
+
+    return matchesSearch && matchesStatus && matchesLocation && matchesDate
   })
 
   const totalUnits = filteredProducts.reduce((sum, p) => sum + p.quantity, 0)
@@ -118,27 +118,16 @@ export function InventoryTableView() {
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => downloadSampleTemplate()}
-            className="text-xs h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 font-medium hover:bg-slate-50 dark:hover:bg-slate-800"
-            title="Download Sample Excel File"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-            Sample Template
-          </Button>
-
+        {/* Action Buttons: Only Import, Export, and Add Product */}
+        <div className="flex items-center gap-2.5 flex-wrap">
           {canExportExcel && (
             <Button
               size="sm"
               variant="outline"
               onClick={() => exportProductsToExcel(filteredProducts)}
-              className="text-xs h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 font-medium hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="text-xs h-9 px-3.5 rounded-xl border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
             >
-              <Download className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+              <Download className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" />
               Export ({filteredProducts.length})
             </Button>
           )}
@@ -147,7 +136,7 @@ export function InventoryTableView() {
             <Button
               size="sm"
               onClick={() => setIsImportOpen(true)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 px-3.5 rounded-xl font-medium shadow-xs"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 px-4 rounded-xl font-semibold shadow-xs"
             >
               <Upload className="w-3.5 h-3.5 mr-1.5" />
               Import Excel
@@ -161,48 +150,34 @@ export function InventoryTableView() {
                 setEditingProduct(null)
                 setIsProductModalOpen(true)
               }}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-3.5 rounded-xl font-semibold shadow-xs"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-4 rounded-xl font-bold shadow-xs"
             >
               <Plus className="w-3.5 h-3.5 mr-1.5" />
               Add Product
             </Button>
           )}
-
-          {isAdmin && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setResetConfirmText('')
-                setIsResetConfirmOpen(true)
-              }}
-              className="text-xs h-9 px-3 rounded-xl border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-              title="Reset All Inventory"
-            >
-              <Trash2 className="w-3.5 h-3.5 mr-1" />
-              Reset All
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Search & Filter Bar (Matching reference site) */}
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-        <div className="sm:col-span-6 relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search SKU or product name..."
-            className="pl-10 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-          />
-        </div>
+      {/* Compact Search & Comprehensive Date Filter Toolbar */}
+      <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Compact Search Bar */}
+          <div className="relative w-full sm:w-60 md:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search SKU or name..."
+              className="pl-9 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+            />
+          </div>
 
-        <div className="sm:col-span-3">
+          {/* Location Select */}
           <select
             value={selectedLocation}
             onChange={(e) => setSelectedLocation(e.target.value)}
-            className="w-full h-10 text-xs px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-300"
+            className="h-9 text-xs px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-300"
           >
             <option value="ALL">All Locations</option>
             {WAREHOUSE_LOCATIONS.map((loc) => (
@@ -211,13 +186,12 @@ export function InventoryTableView() {
               </option>
             ))}
           </select>
-        </div>
 
-        <div className="sm:col-span-3">
+          {/* Status Select */}
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full h-10 text-xs px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-medium text-slate-700 dark:text-slate-300"
+            className="h-9 text-xs px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-300"
           >
             <option value="ALL">All Status</option>
             <option value="in_stock">In Stock</option>
@@ -225,6 +199,48 @@ export function InventoryTableView() {
             <option value="out_of_stock">Out of Stock</option>
             <option value="overstock">Overstock</option>
           </select>
+        </div>
+
+        {/* Date System Filter (From & To) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Date:</span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400">From</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400">To</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+
+          {(fromDate || toDate) && (
+            <button
+              onClick={() => {
+                setFromDate('')
+                setToDate('')
+              }}
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg font-medium transition-colors"
+              title="Clear date filter"
+            >
+              <X className="w-3 h-3" />
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,7 +263,7 @@ export function InventoryTableView() {
               {filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-12 text-center text-slate-400 text-xs">
-                    No products found matching your search filters.
+                    No products found matching your search or date filters.
                   </td>
                 </tr>
               ) : (
@@ -258,95 +274,99 @@ export function InventoryTableView() {
                   >
                     {/* 1. Photo */}
                     <td className="py-2.5 px-4 text-center">
-                      <div
-                        onClick={() => p.imageUrl && setPreviewImage({ url: p.imageUrl, name: p.name, sku: p.sku })}
-                        className={`w-12 h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden mx-auto shadow-xs ${
-                          p.imageUrl ? 'cursor-pointer hover:scale-105 hover:ring-2 hover:ring-indigo-500 transition-all' : ''
-                        }`}
-                        title={p.imageUrl ? 'Click to preview photo' : 'No photo uploaded'}
-                      >
-                        {p.imageUrl ? (
+                      {p.imageUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewImage({ url: p.imageUrl!, name: p.name, sku: p.sku })}
+                          className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:opacity-80 transition-opacity inline-flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                          title="Click to view full image"
+                        >
                           <img
                             src={p.imageUrl}
                             alt={p.name}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                            }}
+                            loading="lazy"
                           />
-                        ) : (
-                          <Package className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                        )}
-                      </div>
+                        </button>
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 inline-flex items-center justify-center text-slate-400 text-[10px] font-bold">
+                          No Pic
+                        </div>
+                      )}
                     </td>
 
                     {/* 2. SKU */}
-                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap text-xs">
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900 dark:text-white text-xs">
                       {p.sku}
                     </td>
 
                     {/* 3. Product Name */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-slate-900 dark:text-white block text-xs" title={p.name}>
-                          {p.name}
-                        </span>
-                        {p.totalDamaged && p.totalDamaged > 0 ? (
-                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400">
-                            {p.totalDamaged} damaged
+                    <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200">
+                      <div>
+                        <span>{p.name}</span>
+                        {p.notes && (
+                          <span className="block text-[11px] text-slate-400 font-normal truncate max-w-xs mt-0.5">
+                            {p.notes}
                           </span>
-                        ) : null}
+                        )}
                       </div>
                     </td>
 
                     {/* 4. Location */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
-                        <Building2 className="w-3 h-3 text-indigo-500" />
+                    <td className="py-3.5 px-4">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
                         {p.location || p.warehouse || 'Store'}
                       </span>
                     </td>
 
                     {/* 5. Units on Hand */}
-                    <td className="py-3.5 px-4 font-mono font-bold text-sm text-slate-900 dark:text-white whitespace-nowrap">
-                      {p.quantity.toLocaleString()}
+                    <td className="py-3.5 px-4 font-mono">
+                      <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                        {p.quantity.toLocaleString()}
+                      </span>
+                      {p.totalDamaged ? (
+                        <span className="text-[10px] text-rose-500 font-bold ml-1.5">
+                          ({p.totalDamaged} dmg)
+                        </span>
+                      ) : null}
                     </td>
 
                     {/* 6. Status */}
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-center">
                       {statusBadge(p.status)}
                     </td>
 
-                    {/* 5. Action */}
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
+                    {/* 7. Action */}
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
                         {canAddEditProducts && (
-                          <button
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => {
                               setEditingProduct(p)
                               setIsProductModalOpen(true)
                             }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
+                            className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg"
                             title="Edit Product"
                           >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
                         )}
                         {canDeleteProducts && (
-                          <button
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => {
-                              if (confirm(`Are you sure you want to remove SKU ${p.sku}?`)) {
+                              if (confirm(`Are you sure you want to delete ${p.sku} (${p.name})?`)) {
                                 deleteProduct(p.id)
                               }
                             }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg"
                             title="Delete Product"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                        {!canAddEditProducts && !canDeleteProducts && (
-                          <span className="text-[11px] text-slate-400 font-medium">View Only</span>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -357,22 +377,17 @@ export function InventoryTableView() {
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-medium gap-2">
-          <span>
-            Showing <strong>{filteredProducts.length}</strong> Products
-          </span>
-          <span>
-            Total Physical Units:{' '}
-            <strong className="text-slate-900 dark:text-white font-bold text-xs">
-              {totalUnits.toLocaleString()} Units
-            </strong>
-          </span>
+        {/* Footer info */}
+        <div className="p-3.5 bg-slate-50/60 dark:bg-slate-800/40 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <span>Showing {filteredProducts.length} of {products.length} Products</span>
+          <span>Total Units on Hand: <strong className="text-slate-900 dark:text-white font-mono">{totalUnits.toLocaleString()}</strong></span>
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Excel Import Modal */}
       <ExcelImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+
+      {/* Add / Edit Product Modal */}
       <ProductModal
         isOpen={isProductModalOpen}
         onClose={() => {
@@ -382,65 +397,14 @@ export function InventoryTableView() {
         product={editingProduct}
       />
 
-      {/* Danger Zone: Reset All Confirmation Modal */}
-      <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-        <DialogContent className="max-w-md bg-card text-card-foreground border-border rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-rose-600 dark:text-rose-400">
-              <AlertTriangle className="w-5 h-5 text-rose-600" />
-              Reset All Inventory
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              This will irreversibly delete all products, stock quantities, and movement history. This cannot be undone!
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-3">
-            <p className="text-xs text-slate-700 dark:text-slate-300">
-              Please type <strong className="font-mono text-rose-600 select-all">DELETE ALL</strong> below to confirm:
-            </p>
-            <Input
-              value={resetConfirmText}
-              onChange={(e) => setResetConfirmText(e.target.value)}
-              placeholder="DELETE ALL"
-              className="h-10 text-xs font-mono font-bold"
-            />
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsResetConfirmOpen(false)}
-              className="text-xs h-9 rounded-xl"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={resetConfirmText !== 'DELETE ALL'}
-              onClick={() => {
-                deleteAllInventory()
-                setIsResetConfirmOpen(false)
-              }}
-              className="bg-rose-600 hover:bg-rose-500 text-white text-xs h-9 font-bold rounded-xl shadow-xs"
-            >
-              Confirm Full Reset
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Product Image Lightbox Modal */}
       <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
-        <DialogContent className="max-w-md bg-card text-card-foreground border-border rounded-3xl p-6">
+        <DialogContent className="max-w-md bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold text-foreground">
+            <DialogTitle className="text-sm font-bold text-slate-900 dark:text-white">
               {previewImage?.name}
             </DialogTitle>
-            <DialogDescription className="text-xs font-mono text-indigo-600 dark:text-indigo-400">
+            <DialogDescription className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-bold">
               SKU: {previewImage?.sku}
             </DialogDescription>
           </DialogHeader>
@@ -471,4 +435,3 @@ export function InventoryTableView() {
     </div>
   )
 }
-

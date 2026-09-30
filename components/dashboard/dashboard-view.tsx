@@ -17,11 +17,14 @@ import {
   CheckCircle2,
   Clock,
   ShieldAlert,
+  Calendar,
+  X,
 } from 'lucide-react'
 import { exportProductsToExcel } from '@/lib/excel-helper'
 import { ExcelImportModal } from '@/components/inventory/excel-import-modal'
 import { ProductModal } from '@/components/inventory/product-modal'
 import { WAREHOUSE_LOCATIONS } from '@/lib/types'
+import { isDateInRange } from '@/lib/date-filter'
 
 export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const {
@@ -38,11 +41,25 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
 
+  // Date range filter state
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+
   const totalSkus = products.length
   const totalUnits = products.reduce((acc, p) => acc + p.quantity, 0)
   const lowStockItems = products.filter((p) => p.status === 'low_stock')
   const outOfStockItems = products.filter((p) => p.status === 'out_of_stock')
   const totalDamagedUnits = products.reduce((acc, p) => acc + (p.totalDamaged || 0), 0)
+
+  // Date-filtered transactions
+  const filteredTransactions = transactions.filter((t) => isDateInRange(t.date, fromDate, toDate))
+  const recentTransactions = filteredTransactions.slice(0, 8)
+  const periodDispatches = filteredTransactions
+    .filter((t) => t.type === 'stock_out')
+    .reduce((sum, t) => sum + t.quantity, 0)
+  const periodInward = filteredTransactions
+    .filter((t) => t.type === 'stock_in' || t.type === 'return')
+    .reduce((sum, t) => sum + t.quantity, 0)
 
   // Location statistics
   const locationStats = WAREHOUSE_LOCATIONS.map((loc) => {
@@ -58,8 +75,6 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
     }
   })
 
-  // Recent transactions (last 6)
-  const recentTransactions = transactions.slice(0, 6)
 
   const getMovementBadge = (type: string) => {
     switch (type) {
@@ -164,13 +179,51 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
         </div>
       </div>
 
-      {/* 2. Page Section Title */}
-      <div>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Dashboard</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Live snapshot of stock health across all locations.
-        </p>
+      {/* 2. Page Section Title & Date Filter Toolbar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Dashboard</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Live snapshot of stock health across all locations.
+          </p>
+        </div>
+
+        {/* Date Filter Toolbar (Matching Reference Site) */}
+        <div className="flex flex-wrap items-center gap-2.5 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 pl-1.5">
+            <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Filter:</span>
+          </div>
+          <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span>From</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="h-7 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span>To</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="h-7 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </label>
+          {(fromDate || toDate) && (
+            <button
+              onClick={() => { setFromDate(''); setToDate('') }}
+              className="inline-flex items-center gap-1 text-xs px-2 py-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg font-medium transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Clear
+            </button>
+          )}
+        </div>
       </div>
+
 
       {/* 3. Stat Grid: 5 3D-Elevated Cards Matching Reference Website */}
       <div className="stat-grid">
